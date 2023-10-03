@@ -70,7 +70,7 @@ return [
             'port' => '3306',
             'database' => 'loteriabr_BD_DEV',
             'username' => 'loteriabr_DEV_USER',
-            'password' => 'SmartPayBD22',
+            'password' => 'LotoImperial2022',
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
