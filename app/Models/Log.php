@@ -11,6 +11,8 @@ class Log extends Model
 
     protected $fillable = [
         'user_id',
-        'log'
+        'user_name',
+        'action',
+        'response'
     ];
 }

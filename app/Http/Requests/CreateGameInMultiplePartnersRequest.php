@@ -23,7 +23,7 @@ class CreateGameInMultiplePartnersRequest extends FormRequest
     {
         return [
             'partners' => 'required|array',
-            'number' => 'required|numeric',
+            'number' => 'required',
             'category' => 'required|string',
             'date_of_sort' => 'required|date'
         ];

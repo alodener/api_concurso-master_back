@@ -42,9 +42,8 @@ Route::middleware('auth')->prefix('logs')->group(function () {
 Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/', [PartnerController::class, 'index']);
     Route::post('/', [PartnerController::class, 'createGameInMultiplePartners']);
+    Route::post('/send-result', [PartnerController::class, 'sendResultInMultiplePartners']);
+    Route::get('/get-result', [PartnerController::class, 'getResultInMultiplePartners']);
+    Route::put('/update-status', [PartnerController::class, 'updateStatus']);
 });
 
-Route::get('/teste321', function() {
-    $users = DB::connection('banca1')->table('type_games')->get();
-    return $users;
-});
