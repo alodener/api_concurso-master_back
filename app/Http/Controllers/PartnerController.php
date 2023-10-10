@@ -71,7 +71,7 @@ class PartnerController extends Controller
             $log->user_id = Auth::user()->id;
             $log->user_name = Auth::user()->name;
             $log->action = 'Problemas de integração com a banca '.$data_partner->name;
-            $log->response = json_encode($th->getMessage());
+            $log->response = json_encode("MESSAGE: ".$th->getMessage()." LINE: ".$th->getLine()." REQUEST: ".json_encode($request->all()));
             $log->save();
             throw new Exception($th);
         }
@@ -123,7 +123,7 @@ class PartnerController extends Controller
             $log->user_id = Auth::user()->id;
             $log->user_name = Auth::user()->name;
             $log->action = 'Problemas de integração com a banca '.$data_partner->name;
-            $log->response = json_encode($th->getMessage());
+            $log->response = json_encode("MESSAGE: ".$th->getMessage()." LINE: ".$th->getLine()." REQUEST: ".json_encode($request->all()));
             $log->save();
             throw new Exception($th);
         }
