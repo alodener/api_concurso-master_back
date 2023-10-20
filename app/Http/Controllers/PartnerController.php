@@ -36,31 +36,37 @@ class PartnerController extends Controller
                 $type_games = DB::connection($data_partner['connection'])->table('type_games')->where('category', $data['category'])->get();
                 if($data['category'] == 'dupla_sena') {
                     foreach ($type_games as $type_game) {
-                        DB::connection($data_partner['connection'])->table('competitions')->insert([
-                            'number' => $data['number'].'A',
-                            'type_game_id' => $type_game->id,
-                            'sort_date' => $data['date_of_sort'],
-                            'created_at' => Carbon::now('America/Sao_Paulo'),
-                            'updated_at' => Carbon::now('America/Sao_Paulo')
-                        ]);
-                        DB::connection($data_partner['connection'])->table('competitions')->insert([
-                            'number' => $data['number'],
-                            'type_game_id' => $type_game->id,
-                            'sort_date' => $data['date_of_sort'],
-                            'created_at' => Carbon::now('America/Sao_Paulo'),
-                            'updated_at' => Carbon::now('America/Sao_Paulo')
-                        ]);
+                        $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
+                        if(!$has_competition) {
+                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                                'number' => $data['number'].'A',
+                                'type_game_id' => $type_game->id,
+                                'sort_date' => $data['date_of_sort'],
+                                'created_at' => Carbon::now('America/Sao_Paulo'),
+                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                            ]);
+                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                                'number' => $data['number'],
+                                'type_game_id' => $type_game->id,
+                                'sort_date' => $data['date_of_sort'],
+                                'created_at' => Carbon::now('America/Sao_Paulo'),
+                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                            ]);
+                        }
                     }
                 }
                 if($data['category'] != 'dupla_sena') {
                     foreach ($type_games as $type_game) {
-                        DB::connection($data_partner['connection'])->table('competitions')->insert([
-                            'number' => $data['number'],
-                            'type_game_id' => $type_game->id,
-                            'sort_date' => $data['date_of_sort'],
-                            'created_at' => Carbon::now('America/Sao_Paulo'),
-                            'updated_at' => Carbon::now('America/Sao_Paulo')
-                        ]);
+                        $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
+                        if(!$has_competition) {
+                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                                'number' => $data['number'],
+                                'type_game_id' => $type_game->id,
+                                'sort_date' => $data['date_of_sort'],
+                                'created_at' => Carbon::now('America/Sao_Paulo'),
+                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                            ]);
+                        }
                     }
                 }
             }
@@ -84,20 +90,28 @@ class PartnerController extends Controller
             $resultsArray = array_map('intval', explode(',', $data['result']));
     
             foreach ($data['partners'] as $partner) {
+                $winners = null;
+                $draw_data = null;
+                $concurses_id = null;
+                $draws_id = [];
                 $data_partner = Partner::findOrFail($partner);
                 $_SESSION['partner_send_result'] = $data_partner;
                 $categorys = DB::connection($data_partner['connection'])->table('type_games')->where('category', $data['category'])->pluck('id');
                 $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->whereIn('type_game_id', $categorys)->get();
                 foreach ($concurses as $concurse) {
-                    $concurses_id[] = $concurse->id;
-                    $draws_id[] = DB::connection($data_partner['connection'])->table('draws')->insertGetId([
-                        'type_game_id' => $concurse->type_game_id,
-                        'competition_id' => $concurse->id,
-                        'numbers' => $data['result'],
-                        'created_at' => Carbon::now('America/Sao_Paulo'),
-                        'updated_at' => Carbon::now('America/Sao_Paulo')
-                    ]);
+                    $has_draw = DB::connection($data_partner['connection'])->table('draws')->where('type_game_id', $concurse->type_game_id)->where('competition_id', $concurse->id)->exists();
+                    if(!$has_draw) {
+                        $concurses_id[] = $concurse->id;
+                        $draws_id[] = DB::connection($data_partner['connection'])->table('draws')->insertGetId([
+                            'type_game_id' => $concurse->type_game_id,
+                            'competition_id' => $concurse->id,
+                            'numbers' => $data['result'],
+                            'created_at' => Carbon::now('America/Sao_Paulo'),
+                            'updated_at' => Carbon::now('America/Sao_Paulo')
+                        ]);
+                    }
                 }
+
                 foreach ($draws_id as $draw) {
                     $draw_data = DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->first();
                     $competitions = DB::connection($data_partner['connection'])->table('games')->where('checked', 1)->where('competition_id', $draw_data->competition_id)->get();
@@ -114,7 +128,6 @@ class PartnerController extends Controller
                     }
                     $winners = null;
                 }
-    
             }
             return Response('Resultados enviados com sucesso', 200);
         } catch (\Throwable $th) {
@@ -165,17 +178,22 @@ class PartnerController extends Controller
     public function updateStatus(Request $request) {
         $data = $request->all();
         $data_partner = Partner::findOrFail($data['partner']);
-        $game = DB::connection($data_partner['connection'])->table('games')->where('id', $data['id'])->update(['status' => $data['status']]);
-
+        
         if($data['status'] == 2) {
             $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $data['id'])->first();
-            $user_data = DB::connection($data_partner['connection'])->table('users')->where('id', $data_game->user_id)->first();
-            
-            $value = floatval($data_game->premio) + floatval($user_data->available_withdraw);
-            $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $data_game->user_id)->update(['available_withdraw' => $value]);
-            return Response($game, 200);
-        }
+            $client_data = DB::connection($data_partner['connection'])->table('clients')->find($data_game->client_id);
+            $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
+            if($user_data) {
+                $value = floatval($data_game->premio) + floatval($user_data->available_withdraw);
+                $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $value]);
+            }else {
+                $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                $value = floatval($data_game->premio) + floatval($user_data_default->available_withdraw);
+                $user_update = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->update(['available_withdraw' => $value]);
+            }
 
-        return Response($game, 200);
+        }
+        $game = DB::connection($data_partner['connection'])->table('games')->where('id', $data['id'])->update(['status' => $data['status']]);
+        return Response("Alteração finalizadas com sucesso!", 200);
     }
 }
