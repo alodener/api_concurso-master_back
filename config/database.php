@@ -124,7 +124,7 @@ return [
     'AguiaDasorte' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
-            'host' => '92.204.136.156',
+            'host' => '92.204.144.50',
             'port' => '3306',
             'database' => 'aguiadasorte_BD_PROD',
             'username' => 'aguiadasorte_PROD_USER',
