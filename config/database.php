@@ -181,7 +181,7 @@ return [
 'AgoraEuGanho' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
-            'host' => '92.204.136.156',
+            'host' => '92.204.136.116',
             'port' => '3306',
             'database' => 'agoraeuganho_BD_PRDO',
             'username' => 'agoraeuganho_USER_PRD',
