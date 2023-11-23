@@ -9,10 +9,6 @@ class PrizeApproveController extends Controller
 {
     public function distributePrizes(Request $request)
     {
-
-        // $totalAmount = $request->input('total_amount');
-        // $numberOfPeople = $request->input('number_of_people');
-
         $totalAmount = 1000;
         $numberOfPeople = 3;
 

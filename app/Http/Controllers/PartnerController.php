@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Stmt\Return_;
+use App\Models\People;
+
 
 class PartnerController extends Controller
 {
@@ -143,36 +145,35 @@ class PartnerController extends Controller
 
     }
 
-    public function getResultInMultiplePartners(Request $request) {
-
+    public function getResultInMultiplePartners(Request $request)
+    {
         try {
             $data = $request->all();
             $winners = [];
             $data_partner = Partner::findOrFail($data['partner']);
             $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
-            $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id',$concurses)->get();
+            $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
 
             foreach ($draws as $draw) {
-                if($draw != null) {
+                if ($draw != null) {
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $games = DB::connection($data_partner['connection'])
-                    ->table('games')
-                    ->select(['games.id', 'clients.name', 'games.premio' ,'games.status'])
-                    ->join('clients', 'clients.id', '=', 'games.client_id')
-                    ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
-                    ->where('games.checked', 1)
-                    ->whereIn('games.id', $numbers_draw)
-                    ->get();
+                        ->table('games')    
+                        ->select(['games.id', 'clients.name', 'games.premio', 'games.status'])
+                        ->join('clients', 'clients.id', '=', 'games.client_id')
+                        ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
+                        ->where('games.checked', 1)
+                        ->whereIn('games.id', $numbers_draw)
+                        ->get();
                     foreach ($games as $game) {
                         array_push($winners, $game);
                     }
                 }
             }
-            return Response($winners, 200);
+            return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
-
     }
 
     public function updateStatus(Request $request) {
@@ -196,4 +197,50 @@ class PartnerController extends Controller
         $game = DB::connection($data_partner['connection'])->table('games')->where('id', $data['id'])->update(['status' => $data['status']]);
         return Response("Alteração finalizadas com sucesso!", 200);
     }
+
+    public function distributePrizes(Request $request)
+    {
+        try {
+            $totalAmount = 3000;
+            $numberOfPeople = 2;
+
+            if ($numberOfPeople <= 0) {
+                return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
+            }
+
+            $prizePerPerson = $totalAmount / $numberOfPeople;
+
+            $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
+
+            $winnersList = [];
+
+            foreach ($winners as $winner) {
+                $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
+                $winnerPrize = $prizePerPerson;
+                $winnerStatus = rand(1, 3); // Gera um número aleatório entre 1 e 3
+                $winnerId = str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT); // Gera um número aleatório de 4 dígitos
+
+                $winnersList[] = [
+                    'id' => $winnerId,
+                    'name' => $winnerFullName,
+                    'premio' => $winnerPrize,
+                    'status' => $winnerStatus,
+                ];
+            }
+
+            // Chama a função getResultInMultiplePartners sem modificação
+            $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
+
+            // Remova a chave 'winners' do resultado da função getResultInMultiplePartners
+            $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
+
+            // Junta os resultados das duas funções
+            $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
+
+            return response()->json($mergedResults, 200);
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+
 }
