@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\PrizeApproveController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,4 +47,6 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/get-result', [PartnerController::class, 'getResultInMultiplePartners']);
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
 });
+
+Route::get('/teste', [PrizeApproveController::class, 'distributePrizes']);
 
