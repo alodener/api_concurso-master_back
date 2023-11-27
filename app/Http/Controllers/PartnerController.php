@@ -201,25 +201,31 @@ class PartnerController extends Controller
     public function distributePrizes(Request $request)
     {
         try {
-            $totalAmount = 3000;
-            $numberOfPeople = 2;
-
+            $totalAmount = $request->premio;
+            $numberOfPeople = $request->ganhadores;
+    
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
-
-            $prizePerPerson = $totalAmount / $numberOfPeople;
-
+    
+            $distributionFactors = $this->generateDistributionFactors($numberOfPeople);
+    
             $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
-
+    
             $winnersList = [];
-
-            foreach ($winners as $winner) {
+    
+            $winners = $winners->sortByDesc(function ($winner) {
+                return $winner->premio;
+            });
+    
+            foreach ($winners as $key => $winner) {
                 $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
-                $winnerPrize = $prizePerPerson;
-                $winnerStatus = rand(1, 3); // Gera um número aleatório entre 1 e 3
-                $winnerId = str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT); // Gera um número aleatório de 4 dígitos
-
+                
+                $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
+            
+                $winnerStatus = rand(1, 3); 
+                $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
+            
                 $winnersList[] = [
                     'id' => $winnerId,
                     'name' => $winnerFullName,
@@ -227,20 +233,36 @@ class PartnerController extends Controller
                     'status' => $winnerStatus,
                 ];
             }
-
-            // Chama a função getResultInMultiplePartners sem modificação
+    
             $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
-
-            // Remova a chave 'winners' do resultado da função getResultInMultiplePartners
+    
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-
-            // Junta os resultados das duas funções
+    
             $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
-
+    
+            $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
+    
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
+    private function generateDistributionFactors($numberOfPeople)
+    {
+        $factors = [];
+    
+        for ($i = 0; $i < $numberOfPeople; $i++) {
+            $factors[] = mt_rand(1, 100) / 100;
+        }
+    
+        $sum = array_sum($factors);
+        $factors = array_map(function ($factor) use ($sum) {
+            return $factor / $sum;
+        }, $factors);
+    
+        return $factors;
+    }
+    
 
 }
