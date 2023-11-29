@@ -228,28 +228,32 @@ class PartnerController extends Controller
                 return $winner->premio;
             });
     
+            $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
+            $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
+    
+            $gameName = $resultInMultiplePartners[0]->game_name;
+            $sortDate = Carbon::parse($resultInMultiplePartners[0]->sort_date)->format('d/m/Y');
+            $num_tickets = $resultInMultiplePartners[0]->num_tickets;
+    
             foreach ($winners as $key => $winner) {
                 $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
-                
+    
                 $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
-            
-                $winnerStatus = rand(1, 3); 
+                $winnerStatus = rand(1, 3);
                 $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-            
+    
                 $winnersList[] = [
                     'id' => $winnerId,
                     'name' => $winnerFullName,
                     'premio' => $winnerPrize,
                     'status' => $winnerStatus,
+                    'game_name' => $gameName,
+                    'sort_date' => $sortDate,
+                    'num_tickets' =>$num_tickets,
                 ];
             }
     
-            $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
-    
-            $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-    
             $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
-    
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
     
             return response()->json($mergedResults, 200);
@@ -257,6 +261,7 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+    
     
     private function generateDistributionFactors($numberOfPeople)
     {
