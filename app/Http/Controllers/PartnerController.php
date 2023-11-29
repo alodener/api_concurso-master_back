@@ -159,9 +159,11 @@ class PartnerController extends Controller
                     $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
                     
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
+                    $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados
+
                     $games = DB::connection($data_partner['connection'])
                         ->table('games')    
-                        ->select(['games.id', 'clients.name', 'games.premio', 'games.status'])
+                        ->select(['games.id', 'clients.name as client_name', 'games.premio', 'games.status', 'type_games.name as game_name'])
                         ->join('clients', 'clients.id', '=', 'games.client_id')
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                         ->where('games.checked', 1)
@@ -169,7 +171,8 @@ class PartnerController extends Controller
                         ->get();
 
                     foreach ($games as $game) {
-                        $game->sort_date = $competition->sort_date; // Adiciona a data de sorteio ao objeto $game
+                        $game->sort_date = $competition->sort_date;
+                        $game->num_tickets = $num_tickets; // Adiciona a quantidade de bilhetes sorteados
                         array_push($winners, $game);
                     }
                 }
@@ -180,6 +183,7 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+
 
 
     public function updateStatus(Request $request) {
