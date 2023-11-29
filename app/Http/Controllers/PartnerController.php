@@ -156,6 +156,8 @@ class PartnerController extends Controller
 
             foreach ($draws as $draw) {
                 if ($draw != null) {
+                    $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
+                    
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $games = DB::connection($data_partner['connection'])
                         ->table('games')    
@@ -165,16 +167,20 @@ class PartnerController extends Controller
                         ->where('games.checked', 1)
                         ->whereIn('games.id', $numbers_draw)
                         ->get();
+
                     foreach ($games as $game) {
+                        $game->sort_date = $competition->sort_date; // Adiciona a data de sorteio ao objeto $game
                         array_push($winners, $game);
                     }
                 }
             }
+
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+
 
     public function updateStatus(Request $request) {
         $data = $request->all();
