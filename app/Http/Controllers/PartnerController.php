@@ -157,12 +157,12 @@ class PartnerController extends Controller
             foreach ($draws as $draw) {
                 if ($draw != null) {
                     $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
-                    
+
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados
 
                     $games = DB::connection($data_partner['connection'])
-                        ->table('games')    
+                        ->table('games')
                         ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
                         ->join('clients', 'clients.id', '=', 'games.client_id')
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
@@ -173,6 +173,10 @@ class PartnerController extends Controller
                     foreach ($games as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets; // Adiciona a quantidade de bilhetes sorteados
+
+                        // Formata o valor como dinheiro
+                        $game->premio_formatted = $this->formatMoney($game->premio);
+
                         array_push($winners, $game);
                     }
                 }
@@ -183,6 +187,12 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+
+    private function formatMoney($value)
+    {
+        return $value >= 1000 ? 'R$ ' . number_format($value, 2, ',', '.') : 'R$ ' . number_format($value, 2, ',', '.');
+    }
+
 
 
 
@@ -250,6 +260,8 @@ class PartnerController extends Controller
                     'game_name' => $gameName,
                     'sort_date' => $sortDate,
                     'num_tickets' =>$num_tickets,
+                    'premio_formatted' => $this->formatMoney($winnerPrize),
+
                 ];
             }
     
@@ -277,6 +289,22 @@ class PartnerController extends Controller
         }, $factors);
     
         return $factors;
+    }
+
+    public function listCompetitions()
+    {
+        // $data_partner = Partner::findOrFail($data['partner']);
+
+        // $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
+        // dd($concurses);
+        // $competitions = DB::table('competitions')
+        //     ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
+        //     ->select('competitions.number', 'competitions.type_game_id', 'type_games.name')
+        //     ->orderBy('competitions.created_at', 'desc')
+        //     ->take(10) 
+        //     ->get();
+
+        // return response()->json($competitions);
     }
     
 
