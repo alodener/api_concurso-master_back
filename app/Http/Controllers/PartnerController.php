@@ -147,46 +147,46 @@ class PartnerController extends Controller
 
     public function getResultInMultiplePartners(Request $request)
     {
-        try {
-            $data = $request->all();
-            $winners = [];
-            $data_partner = Partner::findOrFail($data['partner']);
-            $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
-            $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
+            try {
+                $data = $request->all();
+                $winners = [];
+                $data_partner = Partner::findOrFail($data['partner']);
+                $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
+                $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
 
-            foreach ($draws as $draw) {
-                if ($draw != null) {
-                    $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
+                foreach ($draws as $draw) {
+                    if ($draw != null) {
+                        $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
 
-                    $numbers_draw = array_map('intval', explode(',', $draw->games));
-                    $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados
+                        $numbers_draw = array_map('intval', explode(',', $draw->games));
+                        $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados
 
-                    $games = DB::connection($data_partner['connection'])
-                        ->table('games')
-                        ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
-                        ->join('clients', 'clients.id', '=', 'games.client_id')
-                        ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
-                        ->where('games.checked', 1)
-                        ->whereIn('games.id', $numbers_draw)
-                        ->get();
+                        $games = DB::connection($data_partner['connection'])
+                            ->table('games')
+                            ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
+                            ->join('clients', 'clients.id', '=', 'games.client_id')
+                            ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
+                            ->where('games.checked', 1)
+                            ->whereIn('games.id', $numbers_draw)
+                            ->get();
 
-                    foreach ($games as $game) {
-                        $game->sort_date = $competition->sort_date;
-                        $game->num_tickets = $num_tickets; // Adiciona a quantidade de bilhetes sorteados
+                        foreach ($games as $game) {
+                            $game->sort_date = $competition->sort_date;
+                            $game->num_tickets = $num_tickets; // Adiciona a quantidade de bilhetes sorteados
 
-                        // Formata o valor como dinheiro
-                        $game->premio_formatted = $this->formatMoney($game->premio);
+                            // Formata o valor como dinheiro
+                            $game->premio_formatted = $this->formatMoney($game->premio);
 
-                        array_push($winners, $game);
+                            array_push($winners, $game);
+                        }
                     }
                 }
-            }
 
-            return $winners;
-        } catch (\Throwable $th) {
-            throw new Exception($th);
+                return $winners;
+            } catch (\Throwable $th) {
+                throw new Exception($th);
+            }
         }
-    }
 
     private function formatMoney($value)
     {
@@ -291,21 +291,37 @@ class PartnerController extends Controller
         return $factors;
     }
 
-    public function listCompetitions()
+    public function listCompetitions(Request $request)
     {
-        // $data_partner = Partner::findOrFail($data['partner']);
+        try {
+            $data = $request->all();
+            $data_partner = Partner::findOrFail($data['partner']);
 
-        // $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
-        // dd($concurses);
-        // $competitions = DB::table('competitions')
-        //     ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
-        //     ->select('competitions.number', 'competitions.type_game_id', 'type_games.name')
-        //     ->orderBy('competitions.created_at', 'desc')
-        //     ->take(10) 
-        //     ->get();
+            $query = DB::connection($data_partner['connection'])
+                ->table('competitions')
+                ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
+                ->select(
+                    'competitions.id',
+                    'competitions.number',
+                    'competitions.type_game_id',
+                    'type_games.name as type_game_name',
+                    'competitions.sort_Date',
+                    'competitions.created_at',
+                    'competitions.updated_at'
+                )
+                ->orderBy('competitions.created_at', 'desc');
 
-        // return response()->json($competitions);
+            if (isset($data['number'])) {
+                $query->where('competitions.number', $data['number']);
+            }
+
+            $competitions = $query->take(10)->get();
+
+            return response()->json($competitions);
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
     }
-    
+
 
 }

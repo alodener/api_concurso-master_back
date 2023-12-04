@@ -46,6 +46,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::post('/send-result', [PartnerController::class, 'sendResultInMultiplePartners']);
     Route::get('/get-result', [PartnerController::class, 'getResultInMultiplePartners']);
     Route::get('/get-result2', [PartnerController::class, 'distributePrizes']);
+    Route::get('/list-competitions', [PartnerController::class, 'listCompetitions']);
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
 });
 
