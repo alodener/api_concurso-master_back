@@ -303,11 +303,8 @@ class PartnerController extends Controller
                 ->select(
                     'competitions.id',
                     'competitions.number',
-                    'competitions.type_game_id',
                     'type_games.name as type_game_name',
-                    'competitions.sort_Date',
                     'competitions.created_at',
-                    'competitions.updated_at'
                 )
                 ->orderBy('competitions.created_at', 'desc');
 
@@ -322,6 +319,38 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+
+    public function deleteCompetition(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $data_partner = Partner::findOrFail($data['partner']);
+
+            $competition = DB::connection($data_partner['connection'])
+                ->table('competitions')
+                ->select('id', 'sort_date')
+                ->where('id', $data['id'])
+                ->first();
+
+            if ($competition) {
+                if (now() >= $competition->sort_date) {
+                    return response()->json(['error' => 'O concurso já foi sorteado. Não pode ser excluído.'], 400);
+                }
+
+                DB::connection($data_partner['connection'])
+                    ->table('competitions')
+                    ->where('id', $data['id'])
+                    ->delete();
+
+                return response()->json(['success' => 'Competição excluída com sucesso.'], 200);
+            } else {
+                return response()->json(['error' => 'Competição não encontrada.'], 404);
+            }
+        } catch (\Throwable $th) {
+            return response()->json(['error' => 'Erro ao excluir a competição'], 500);
+        }
+    }
+
 
 
 }

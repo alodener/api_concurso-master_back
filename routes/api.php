@@ -47,6 +47,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/get-result', [PartnerController::class, 'getResultInMultiplePartners']);
     Route::get('/get-result2', [PartnerController::class, 'distributePrizes']);
     Route::get('/list-competitions', [PartnerController::class, 'listCompetitions']);
+    Route::delete('/delete-competition', [PartnerController::class, 'deleteCompetition']);
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
 });
 
