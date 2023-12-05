@@ -186,7 +186,50 @@ class PartnerController extends Controller
             } catch (\Throwable $th) {
                 throw new Exception($th);
             }
+    }
+
+    public function aprovePrize(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $winners = [];
+            $data_partner = Partner::findOrFail($data['partner']);
+
+            $sortDate = $data['date'];
+            $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('sort_date', $sortDate)->pluck('id');
+            $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
+
+            foreach ($draws as $draw) {
+                if ($draw != null) {
+                    $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
+
+                    $numbers_draw = array_map('intval', explode(',', $draw->games));
+                    $num_tickets = count($numbers_draw);
+
+                    $games = DB::connection($data_partner['connection'])
+                        ->table('games')
+                        ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
+                        ->join('clients', 'clients.id', '=', 'games.client_id')
+                        ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
+                        ->where('games.checked', 1)
+                        ->whereIn('games.id', $numbers_draw)
+                        ->get();
+
+                    foreach ($games as $game) {
+                        $game->sort_date = $competition->sort_date;
+                        $game->num_tickets = $num_tickets;
+                        $game->premio_formatted = $this->formatMoney($game->premio);
+
+                        array_push($winners, $game);
+                    }
+                }
+            }
+
+            return $winners;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
         }
+    }
 
     private function formatMoney($value)
     {
