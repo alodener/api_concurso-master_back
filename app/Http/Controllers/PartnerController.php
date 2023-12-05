@@ -296,38 +296,49 @@ class PartnerController extends Controller
     {
         try {
             $data = $request->all();
-            $data_partner = Partner::findOrFail($data['partner']);
+            $partners = isset($data['partners']) ? explode(',', $data['partners']) : [];
 
-            $query = DB::connection($data_partner['connection'])
-                ->table('competitions')
-                ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
-                ->select(
-                    'competitions.id',
-                    'competitions.number',
-                    'type_games.name as type_game_name',
-                    'competitions.sort_date',
-                    'competitions.created_at',
-                )
-                ->orderBy('competitions.created_at', 'desc')
-                ->where('competitions.sort_date', '>=', now());
+            $competitions = collect();
 
-            if (isset($data['number'])) {
-                $query->where('competitions.number', $data['number']);
+            foreach ($partners as $partnerId) {
+                $partner = Partner::findOrFail($partnerId);
+
+                $query = DB::connection($partner->connection)
+                    ->table('competitions')
+                    ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
+                    ->select(
+                        'competitions.id',
+                        'competitions.number',
+                        'type_games.name as type_game_name',
+                        'competitions.sort_date',
+                        'competitions.created_at',
+                        DB::raw($partnerId . ' as partner_id') // Adiciona o ID do parceiro
+                    )
+                    ->orderBy('competitions.created_at', 'desc')
+                    ->where('competitions.sort_date', '>=', now());
+
+                if (isset($data['number'])) {
+                    $query->where('competitions.number', $data['number']);
+                }
+
+                $competitionsForPartner = $query->take(10)->get();
+
+                // Format the sort_date field
+                $competitionsForPartner->transform(function ($item) {
+                    $item->sort_date = Carbon::parse($item->sort_date)->format('d-m-Y H:i:s');
+                    return $item;
+                });
+
+                $competitions = $competitions->merge($competitionsForPartner);
             }
-
-            $competitions = $query->take(10)->get();
-
-            // Format the sort_date field
-            $competitions->transform(function ($item) {
-                $item->sort_date = Carbon::parse($item->sort_date)->format('d-m-Y H:i:s');
-                return $item;
-            });
 
             return response()->json($competitions);
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+
+
 
 
     public function deleteCompetition(Request $request)
