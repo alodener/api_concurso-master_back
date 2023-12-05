@@ -306,7 +306,8 @@ class PartnerController extends Controller
                     'type_games.name as type_game_name',
                     'competitions.created_at',
                 )
-                ->orderBy('competitions.created_at', 'desc');
+                ->orderBy('competitions.created_at', 'desc')
+                ->where('competitions.sort_date', '>=', now());
 
             if (isset($data['number'])) {
                 $query->where('competitions.number', $data['number']);
