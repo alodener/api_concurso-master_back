@@ -172,9 +172,8 @@ class PartnerController extends Controller
 
                         foreach ($games as $game) {
                             $game->sort_date = $competition->sort_date;
-                            $game->num_tickets = $num_tickets; // Adiciona a quantidade de bilhetes sorteados
+                            $game->num_tickets = $num_tickets;
 
-                            // Formata o valor como dinheiro
                             $game->premio_formatted = $this->formatMoney($game->premio);
 
                             array_push($winners, $game);
@@ -195,13 +194,22 @@ class PartnerController extends Controller
             $winners = [];
             $data_partner = Partner::findOrFail($data['partner']);
 
-            $sortDate = $data['date'];
-            $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('sort_date', $sortDate)->pluck('id');
-            $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
+            $concurses = DB::connection($data_partner['connection'])
+                ->table('competitions')
+                ->whereDate('sort_date', '=', $data['date'])
+                ->pluck('id');
+
+            $draws = DB::connection($data_partner['connection'])
+                ->table('draws')
+                ->whereIn('competition_id', $concurses)
+                ->get();
 
             foreach ($draws as $draw) {
                 if ($draw != null) {
-                    $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
+                    $competition = DB::connection($data_partner['connection'])
+                        ->table('competitions')
+                        ->where('id', $draw->competition_id)
+                        ->first();
 
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw);
@@ -230,6 +238,7 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+
 
     private function formatMoney($value)
     {
