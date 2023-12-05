@@ -291,6 +291,7 @@ class PartnerController extends Controller
         return $factors;
     }
 
+
     public function listCompetitions(Request $request)
     {
         try {
@@ -304,6 +305,7 @@ class PartnerController extends Controller
                     'competitions.id',
                     'competitions.number',
                     'type_games.name as type_game_name',
+                    'competitions.sort_date',
                     'competitions.created_at',
                 )
                 ->orderBy('competitions.created_at', 'desc')
@@ -315,11 +317,18 @@ class PartnerController extends Controller
 
             $competitions = $query->take(10)->get();
 
+            // Format the sort_date field
+            $competitions->transform(function ($item) {
+                $item->sort_date = Carbon::parse($item->sort_date)->format('d-m-Y H:i:s');
+                return $item;
+            });
+
             return response()->json($competitions);
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+
 
     public function deleteCompetition(Request $request)
     {
