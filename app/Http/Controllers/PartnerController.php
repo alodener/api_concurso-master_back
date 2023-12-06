@@ -428,5 +428,32 @@ class PartnerController extends Controller
     }
 
 
+    public function updateDrawNumbers(Request $request)
+    {
+        try {
+            $data = $request->all();
+            
+            foreach ($data['partners'] as $partnerId) {
+                $data_partner = Partner::findOrFail($partnerId);
+                
+                // Obtém os IDs das competições relacionadas ao número
+                $concurses = DB::connection($data_partner['connection'])
+                    ->table('competitions')
+                    ->where('number', $data['number'])
+                    ->pluck('id');
+                
+                // Atualiza os números na tabela draws
+                DB::connection($data_partner['connection'])
+                    ->table('draws')
+                    ->whereIn('competition_id', $concurses)
+                    ->update(['numbers' => $data['result']]);
+            }
+
+            return response('Números na tabela draws atualizados com sucesso', 200);
+        } catch (\Throwable $th) {
+            // Lida com a exceção aqui
+            throw new Exception($th);
+        }
+    }
 
 }

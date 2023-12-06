@@ -50,6 +50,8 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/list-competitions', [PartnerController::class, 'listCompetitions']);
     Route::delete('/delete-competition', [PartnerController::class, 'deleteCompetition']);
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
+    Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
+
 });
 
 
