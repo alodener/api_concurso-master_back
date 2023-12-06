@@ -222,6 +222,7 @@ class PartnerController extends Controller
                         ->join('clients', 'clients.id', '=', 'games.client_id')
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                         ->where('games.checked', 1)
+                        ->where('games.status', 1)
                         ->whereIn('games.id', $numbers_draw)
                         ->get();
 
@@ -246,7 +247,7 @@ class PartnerController extends Controller
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
-}
+    }
 
 
     private function formatMoney($value)
