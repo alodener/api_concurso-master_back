@@ -405,32 +405,28 @@ class PartnerController extends Controller
 
     public function deleteCompetition(Request $request)
     {
-        try {
-            $data = $request->all();
-            $data_partner = Partner::findOrFail($data['partner']);
+        $data = $request->all();
+        $data_partner = Partner::findOrFail($data['partner']);
 
-            $competition = DB::connection($data_partner['connection'])
-                ->table('competitions')
-                ->select('id', 'sort_date')
-                ->where('id', $data['id'])
-                ->first();
+        $competition = DB::connection($data_partner['connection'])
+            ->table('competitions')
+            ->select('id', 'sort_date')
+            ->where('id', $data['id'])
+            ->first();
 
-            if ($competition) {
-                if (now() >= $competition->sort_date) {
-                    return response()->json(['error' => 'O concurso já foi sorteado. Não pode ser excluído.'], 400);
-                }
-
-                DB::connection($data_partner['connection'])
-                    ->table('competitions')
-                    ->where('id', $data['id'])
-                    ->delete();
-
-                return response()->json(['success' => 'Competição excluída com sucesso.'], 200);
-            } else {
-                return response()->json(['error' => 'Competição não encontrada.'], 404);
+        if ($competition) {
+            if (now() >= $competition->sort_date) {
+                return response()->json(['error' => 'O concurso já foi sorteado. Não pode ser excluído.'], 400);
             }
-        } catch (\Throwable $th) {
-            return response()->json(['error' => 'Erro ao excluir a competição'], 500);
+
+            DB::connection($data_partner['connection'])
+                ->table('competitions')
+                ->where('id', $data['id'])
+                ->delete();
+
+            return response()->json(['success' => 'Competição excluída com sucesso.'], 200);
+        } else {
+            return response()->json(['error' => 'Competição não encontrada.'], 404);
         }
     }
 
