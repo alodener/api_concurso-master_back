@@ -204,6 +204,8 @@ class PartnerController extends Controller
                 ->whereIn('competition_id', $concurses)
                 ->get();
 
+            $games = [];
+
             foreach ($draws as $draw) {
                 if ($draw != null) {
                     $competition = DB::connection($data_partner['connection'])
@@ -214,7 +216,7 @@ class PartnerController extends Controller
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw);
 
-                    $games = DB::connection($data_partner['connection'])
+                    $drawGames = DB::connection($data_partner['connection'])
                         ->table('games')
                         ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
                         ->join('clients', 'clients.id', '=', 'games.client_id')
@@ -223,13 +225,20 @@ class PartnerController extends Controller
                         ->whereIn('games.id', $numbers_draw)
                         ->get();
 
-                    foreach ($games as $game) {
+                    foreach ($drawGames as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets;
                         $game->premio_formatted = $this->formatMoney($game->premio);
 
-                        array_push($winners, $game);
+                        $games[] = $game;
                     }
+                }
+            }
+            $groupedGames = collect($games)->groupBy('game_name');
+
+            foreach ($groupedGames as $gameName => $group) {
+                foreach ($group as $item) {
+                    $winners[] = $item;
                 }
             }
 
@@ -237,7 +246,7 @@ class PartnerController extends Controller
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
-    }
+}
 
 
     private function formatMoney($value)
