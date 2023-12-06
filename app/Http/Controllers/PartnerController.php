@@ -235,19 +235,16 @@ class PartnerController extends Controller
                     }
                 }
             }
-            $groupedGames = collect($games)->groupBy('game_name');
 
-            foreach ($groupedGames as $gameName => $group) {
-                foreach ($group as $item) {
-                    $winners[] = $item;
-                }
-            }
+            // Ordenar pelo maior prêmio para o menor
+            $winners = collect($games)->sortByDesc('premio')->values()->all();
 
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+
 
 
     private function formatMoney($value)
