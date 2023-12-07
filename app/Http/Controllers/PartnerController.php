@@ -153,16 +153,16 @@ class PartnerController extends Controller
             $data_partner = Partner::findOrFail($data['partner']);
             $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
             $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
-
-            $winnersByNormalizedName = []; // Array para armazenar temporariamente os ganhadores por nome normalizado
-
+    
+            $winnersByGameName = []; // Array para armazenar temporariamente os ganhadores por game_name
+    
             foreach ($draws as $draw) {
                 if ($draw != null) {
                     $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
-
+    
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados
-
+    
                     $games = DB::connection($data_partner['connection'])
                         ->table('games')
                         ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
@@ -171,35 +171,39 @@ class PartnerController extends Controller
                         ->where('games.checked', 1)
                         ->whereIn('games.id', $numbers_draw)
                         ->get();
-
+    
                     foreach ($games as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets;
-
+    
                         $game->premio_formatted = $this->formatMoney($game->premio);
-
-                        // Normaliza o nome para facilitar a comparação
+    
                         $normalizedName = strtolower(trim($game->name));
-
-                        // Verifica se já existe um ganhador com o mesmo nome normalizado
-                        if (isset($winnersByNormalizedName[$normalizedName])) {
-                            // Se existir, unifica o valor do prêmio
-                            $winnersByNormalizedName[$normalizedName]->premio += $game->premio;
+    
+                        if (isset($winnersByGameName[$game->game_name])) {
+                            if (isset($winnersByGameName[$game->game_name][$normalizedName])) {
+                                $winnersByGameName[$game->game_name][$normalizedName]->premio += $game->premio;
+                            } else {
+                                $winnersByGameName[$game->game_name][$normalizedName] = $game;
+                                array_push($winners, $game);
+                            }
                         } else {
-                            // Se não existir, adiciona o ganhador ao array
-                            $winnersByNormalizedName[$normalizedName] = $game;
+                            $winnersByGameName[$game->game_name] = [$normalizedName => $game];
                             array_push($winners, $game);
                         }
                     }
                 }
             }
-
+    
+            usort($winners, function ($a, $b) {
+                return $b->premio - $a->premio;
+            });
+    
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
-
 
     public function aprovePrize(Request $request)
     {
