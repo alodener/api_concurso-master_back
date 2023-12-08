@@ -254,15 +254,19 @@ class PartnerController extends Controller
                 }
             }
 
-            // Ordenar pelo maior prêmio para o menor
-            $winners = collect($games)->sortByDesc('premio')->values()->all();
+            $winners = collect($games)
+                ->groupBy('game_name')
+                ->map(function ($group) {
+                    return $group->sortByDesc('premio')->values()->all();
+                })
+                ->collapse()
+                ->all();
 
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
-
 
 
     private function formatMoney($value)
