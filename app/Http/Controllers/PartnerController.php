@@ -161,7 +161,8 @@ class PartnerController extends Controller
                     $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
     
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
-                    $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados
+                    // $num_tickets = count($numbers_draw); // Conta a quantidade de bilhetes sorteados -
+
     
                     $games = DB::connection($data_partner['connection'])
                         ->table('games')
