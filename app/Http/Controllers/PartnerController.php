@@ -202,12 +202,54 @@ class PartnerController extends Controller
                 ->collapse()
                 ->all();
     
+            $winners = $this->consolidateResultsByGameName($winners);
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
     
+    public function consolidateResultsByGameName($rawResults)
+{
+        try {
+            $consolidatedResults = collect($rawResults)
+                ->groupBy('game_name')
+                ->map(function ($group, $gameName) {
+                    $consolidatedWinners = collect($group)->groupBy('name')->map(function ($winnerGroup) {
+                        $totalTickets = $winnerGroup->sum('num_tickets');
+                        $totalPrize = $winnerGroup->sum('premio');
+
+                        return [
+                            'id' => $winnerGroup->first()->id,
+                            'name' => $winnerGroup->first()->name,
+                            'premio' => number_format($totalPrize, 2, ',', '.'),
+                            'status' => $winnerGroup->first()->status,
+                            'game_name' => $winnerGroup->first()->game_name, // Certifique-se de que $gameName está definido aqui
+                            'sort_date' => $winnerGroup->first()->sort_date,
+                            'num_tickets' => $totalTickets,
+                            'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
+                        ];
+                    })->values()->all();
+
+                    return [
+                        'game_name' => $gameName,
+                        'winners' => $consolidatedWinners,
+                    ];
+                })
+                ->sortBy('game_name')
+                ->pluck('winners')
+                ->collapse() // Flatten the array
+                ->values()
+                ->all();
+
+            return $consolidatedResults;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+
+
+
 
 
     public function aprovePrize(Request $request)
