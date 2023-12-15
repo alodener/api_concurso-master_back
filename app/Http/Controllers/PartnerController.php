@@ -151,20 +151,31 @@ class PartnerController extends Controller
             $data = $request->all();
             $winners = [];
             $data_partner = Partner::findOrFail($data['partner']);
-            $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->pluck('id');
-            $draws = DB::connection($data_partner['connection'])->table('draws')->whereIn('competition_id', $concurses)->get();
     
-            $winnersByGameName = []; // Array para armazenar temporariamente os ganhadores por game_name
+            // Ajuste para pesquisa por data
+            $concurses = DB::connection($data_partner['connection'])
+                ->table('competitions')
+                ->whereDate('sort_date', '=', $data['number'])
+                ->pluck('id');
+    
+            $draws = DB::connection($data_partner['connection'])
+                ->table('draws')
+                ->whereIn('competition_id', $concurses)
+                ->get();
+    
+            $games = [];
     
             foreach ($draws as $draw) {
                 if ($draw != null) {
-                    $competition = DB::connection($data_partner['connection'])->table('competitions')->where('id', $draw->competition_id)->first();
+                    $competition = DB::connection($data_partner['connection'])
+                        ->table('competitions')
+                        ->where('id', $draw->competition_id)
+                        ->first();
     
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw);
-
     
-                    $games = DB::connection($data_partner['connection'])
+                    $drawGames = DB::connection($data_partner['connection'])
                         ->table('games')
                         ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
                         ->join('clients', 'clients.id', '=', 'games.client_id')
@@ -173,38 +184,31 @@ class PartnerController extends Controller
                         ->whereIn('games.id', $numbers_draw)
                         ->get();
     
-                    foreach ($games as $game) {
+                    foreach ($drawGames as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets;
-    
                         $game->premio_formatted = $this->formatMoney($game->premio);
     
-                        $normalizedName = strtolower(trim($game->name));
-    
-                        if (isset($winnersByGameName[$game->game_name])) {
-                            if (isset($winnersByGameName[$game->game_name][$normalizedName])) {
-                                $winnersByGameName[$game->game_name][$normalizedName]->premio += $game->premio;
-                            } else {
-                                $winnersByGameName[$game->game_name][$normalizedName] = $game;
-                                array_push($winners, $game);
-                            }
-                        } else {
-                            $winnersByGameName[$game->game_name] = [$normalizedName => $game];
-                            array_push($winners, $game);
-                        }
+                        $games[] = $game;
                     }
                 }
             }
     
-            usort($winners, function ($a, $b) {
-                return $b->premio - $a->premio;
-            });
+            $winners = collect($games)
+                ->groupBy('game_name')
+                ->map(function ($group) {
+                    return $group->sortByDesc('premio')->values()->all();
+                })
+                ->collapse()
+                ->all();
     
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
+
 
     public function aprovePrize(Request $request)
     {
@@ -503,50 +507,53 @@ class PartnerController extends Controller
     {
         try {
             $data = $request->all();
-    
-            $competitionIds = [];
-    
+
+            $winningGamesData = [];
+
             foreach ($data['partners'] as $partnerId) {
                 $data_partner = Partner::findOrFail($partnerId);
-    
+
                 // Obtém os IDs das competições relacionadas ao número
-                $competitionIds = array_merge(
-                    $competitionIds,
-                    DB::connection($data_partner['connection'])
-                        ->table('competitions')
-                        ->where('number', $data['number'])
-                        ->pluck('id')
-                        ->toArray()
-                );
-            }
-    
-            // Atualiza os números na tabela 'draws'
-            DB::connection($data_partner['connection'])
-                ->table('draws')
-                ->whereIn('competition_id', $competitionIds)
-                ->update(['numbers' => $data['result']]);
-    
-            // Agora, traz os dados da tabela 'games' para cada competition_id
-            $winningGamesData = [];
-            foreach ($competitionIds as $competitionId) {
-                $games = DB::connection($data_partner['connection'])
-                    ->table('games')
-                    ->where('competition_id', $competitionId)
-                    ->get();
-    
-                if ($games->isNotEmpty()) {
-                    $winningGamesData[$competitionId] = $games;
+                $competitionIds = DB::connection($data_partner['connection'])
+                    ->table('competitions')
+                    ->where('number', $data['number'])
+                    ->pluck('id')
+                    ->toArray();
+
+                // Atualiza os números na tabela 'draws'
+                DB::connection($data_partner['connection'])
+                    ->table('draws')
+                    ->whereIn('competition_id', $competitionIds)
+                    ->update(['numbers' => $data['result']]);
+
+                // Agora, traz os dados da tabela 'games' para cada competition_id
+                foreach ($competitionIds as $competitionId) {
+                    $resultItems = explode(',', $data['result']);
+
+                    $games = DB::connection($data_partner['connection'])
+                        ->table('games')
+                        ->where('competition_id', $competitionId);
+
+                    // Verifica se todos os itens estão presentes na coluna 'numbers'
+                    foreach ($resultItems as $item) {
+                        $games->whereRaw("FIND_IN_SET('$item', games.numbers) > 0");
+                    }
+
+                    return $games;
+                    $games = $games->get();
+
+                    if ($games->isNotEmpty()) {
+                        $winningGamesData[$competitionId] = $games;
+                    }
                 }
             }
-    
-            // Aqui, $winningGamesData contém um array associativo onde as chaves são os competition_id
-            // e os valores são as linhas correspondentes da tabela 'games'
             return response()->json(['winning_games_data' => $winningGamesData], 200);
         } catch (\Throwable $th) {
             // Lida com a exceção aqui
             throw new Exception($th);
         }
     }
+
     
 
 }
