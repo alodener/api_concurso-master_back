@@ -496,106 +496,64 @@ class PartnerController extends Controller
         }
     }
 
-
-    // public function updateDrawNumbers(Request $request)
-    // {
-    //     try {
-    //         $data = $request->all();
-
-    //         foreach ($data['partners'] as $partnerId) {
-    //             $data_partner = Partner::findOrFail($partnerId);
-
-    //             foreach ($data['competitions'] as $competitionNumber) {
-    //                 // Obtém os IDs das competições relacionadas ao número
-    //                 $competitionIds = DB::connection($data_partner['connection'])
-    //                     ->table('competitions')
-    //                     ->where('number', $competitionNumber)
-    //                     ->pluck('id');
-
-    //                 // Itera sobre os IDs de competição
-    //                 foreach ($competitionIds as $competitionId) {
-    //                     // Verifica se há jogos vencedores para a competição atual
-    //                     $winningGameIds = DB::connection($data_partner['connection'])
-    //                         ->table('games')
-    //                         ->where('competition_id', $competitionId)
-    //                         ->where(function ($query) use ($data) {
-    //                             $numbers = explode(',', $data['result']);
-    //                             foreach ($numbers as $number) {
-    //                                 $query->whereRaw('FIND_IN_SET(?, numbers)', [$number]);
-    //                             }
-    //                         })
-    //                         ->pluck('id')
-    //                         ->toArray();
-
-    //                     if (!empty($winningGameIds)) {
-    //                         // Atualiza a coluna games na tabela draws apenas para as linhas correspondentes
-    //                         DB::connection($data_partner['connection'])
-    //                             ->table('draws')
-    //                             ->where('competition_id', $competitionId)
-    //                             ->update(['games' => implode(',', $winningGameIds)]);
-    //                     }
-    //                 }
-    //             }
-    //         }
-
-    //         return response('Números na tabela draws atualizados com sucesso', 200);
-    //     } catch (\Throwable $th) {
-    //         // Lida com a exceção aqui
-    //         throw new Exception($th);
-    //     }
-    // }
-
     public function updateDrawNumbers(Request $request)
     {
         try {
             $data = $request->all();
-
             $winningGamesData = [];
-
+    
             foreach ($data['partners'] as $partnerId) {
                 $data_partner = Partner::findOrFail($partnerId);
-
+    
                 // Obtém os IDs das competições relacionadas ao número
                 $competitionIds = DB::connection($data_partner['connection'])
                     ->table('competitions')
                     ->where('number', $data['number'])
                     ->pluck('id')
                     ->toArray();
-
+    
                 // Atualiza os números na tabela 'draws'
                 DB::connection($data_partner['connection'])
                     ->table('draws')
                     ->whereIn('competition_id', $competitionIds)
                     ->update(['numbers' => $data['result']]);
-
-                // Agora, traz os dados da tabela 'games' para cada competition_id
-                foreach ($competitionIds as $competitionId) {
-                    $resultItems = explode(',', $data['result']);
-
-                    $games = DB::connection($data_partner['connection'])
-                        ->table('games')
-                        ->where('competition_id', $competitionId);
-
-                    // Verifica se todos os itens estão presentes na coluna 'numbers'
-                    foreach ($resultItems as $item) {
-                        $games->whereRaw("FIND_IN_SET('$item', games.numbers) > 0");
-                    }
-
-                    return $games;
-                    $games = $games->get();
-
-                    if ($games->isNotEmpty()) {
-                        $winningGamesData[$competitionId] = $games;
-                    }
-                }
             }
-            return response()->json(['winning_games_data' => $winningGamesData], 200);
+    
+            return response()->json(['message' => 'Números atualizados com sucesso.'], 200);
         } catch (\Throwable $th) {
             // Lida com a exceção aqui
             throw new Exception($th);
         }
     }
+    
 
+    public function encontrarJogosPorNumeros($competition_id) {
+        try {
+            // Encontrar números na tabela de draws
+            $drawNumbers = DB::table('draws')
+                ->where('competition_id', $competition_id)
+                ->pluck('numbers')
+                ->toArray();
+    
+            // Encontrar jogos na tabela de games que contenham todos os números
+            $matchingGames = DB::table('games')
+                ->where('competition_id', $competition_id)
+                ->where(function ($query) use ($drawNumbers) {
+                    foreach ($drawNumbers as $numbers) {
+                        $query->whereJsonContains('numbers', $numbers);
+                    }
+                })
+                ->get();
+    
+            // Retornar os IDs dos jogos encontrados
+            $gameIds = $matchingGames->pluck('id')->toArray();
+    
+            return $gameIds;
+        } catch (\Throwable $th) {
+            // Lida com a exceção aqui
+            throw new Exception($th);
+        }
+    }
     
 
 }
