@@ -210,43 +210,43 @@ class PartnerController extends Controller
     }
     
     public function consolidateResultsByGameName($rawResults)
-{
-        try {
-            $consolidatedResults = collect($rawResults)
-                ->groupBy('game_name')
-                ->map(function ($group, $gameName) {
-                    $consolidatedWinners = collect($group)->groupBy('name')->map(function ($winnerGroup) {
-                        $totalTickets = $winnerGroup->sum('num_tickets');
-                        $totalPrize = $winnerGroup->sum('premio');
+    {
+            try {
+                $consolidatedResults = collect($rawResults)
+                    ->groupBy('game_name')
+                    ->map(function ($group, $gameName) {
+                        $consolidatedWinners = collect($group)->groupBy('name')->map(function ($winnerGroup) {
+                            $totalTickets = $winnerGroup->sum('num_tickets');
+                            $totalPrize = $winnerGroup->sum('premio');
+
+                            return [
+                                'id' => $winnerGroup->first()->id,
+                                'name' => $winnerGroup->first()->name,
+                                'premio' => number_format($totalPrize, 2, ',', '.'),
+                                'status' => $winnerGroup->first()->status,
+                                'game_name' => $winnerGroup->first()->game_name, // Certifique-se de que $gameName está definido aqui
+                                'sort_date' => $winnerGroup->first()->sort_date,
+                                'num_tickets' => $totalTickets,
+                                'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
+                            ];
+                        })->values()->all();
 
                         return [
-                            'id' => $winnerGroup->first()->id,
-                            'name' => $winnerGroup->first()->name,
-                            'premio' => number_format($totalPrize, 2, ',', '.'),
-                            'status' => $winnerGroup->first()->status,
-                            'game_name' => $winnerGroup->first()->game_name, // Certifique-se de que $gameName está definido aqui
-                            'sort_date' => $winnerGroup->first()->sort_date,
-                            'num_tickets' => $totalTickets,
-                            'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
+                            'game_name' => $gameName,
+                            'winners' => $consolidatedWinners,
                         ];
-                    })->values()->all();
+                    })
+                    ->sortBy('game_name')
+                    ->pluck('winners')
+                    ->collapse() // Flatten the array
+                    ->values()
+                    ->all();
 
-                    return [
-                        'game_name' => $gameName,
-                        'winners' => $consolidatedWinners,
-                    ];
-                })
-                ->sortBy('game_name')
-                ->pluck('winners')
-                ->collapse() // Flatten the array
-                ->values()
-                ->all();
-
-            return $consolidatedResults;
-        } catch (\Throwable $th) {
-            throw new Exception($th);
+                return $consolidatedResults;
+            } catch (\Throwable $th) {
+                throw new Exception($th);
+            }
         }
-    }
 
 
 
@@ -369,9 +369,9 @@ class PartnerController extends Controller
             $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
     
-            $gameName = $resultInMultiplePartners[0]->game_name;
-            $sortDate = Carbon::parse($resultInMultiplePartners[0]->sort_date)->format('d/m/Y');
-            $num_tickets = $resultInMultiplePartners[0]->num_tickets;
+            $gameName = $resultInMultiplePartners[0]['game_name'] ?? null;
+            $sortDate = Carbon::parse($resultInMultiplePartners[0]['sort_date'] ?? now())->format('d/m/Y');
+            $num_tickets = $resultInMultiplePartners[0]['num_tickets'] ?? null;
     
             foreach ($winners as $key => $winner) {
                 $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
@@ -387,9 +387,8 @@ class PartnerController extends Controller
                     'status' => $winnerStatus,
                     'game_name' => $gameName,
                     'sort_date' => $sortDate,
-                    'num_tickets' =>$num_tickets,
+                    'num_tickets' => $num_tickets,
                     'premio_formatted' => $this->formatMoney($winnerPrize),
-
                 ];
             }
     
@@ -401,6 +400,7 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+    
     
     
     private function generateDistributionFactors($numberOfPeople)
