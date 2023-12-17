@@ -211,44 +211,44 @@ class PartnerController extends Controller
     
     public function consolidateResultsByGameName($rawResults)
     {
-            try {
-                $consolidatedResults = collect($rawResults)
-                    ->groupBy('game_name')
-                    ->map(function ($group, $gameName) {
-                        $consolidatedWinners = collect($group)->groupBy('name')->map(function ($winnerGroup) {
-                            $totalTickets = $winnerGroup->sum('num_tickets');
-                            $totalPrize = $winnerGroup->sum('premio');
+        try {
+            $consolidatedResults = collect($rawResults)
+                ->groupBy('game_name')
+                ->map(function ($group, $gameName) {
+                    $consolidatedWinners = collect($group)->groupBy('name')->map(function ($winnerGroup) {
+                        // Conta quantas vezes cada pessoa apareceu na modalidade
+                        $occurrences = $winnerGroup->count();
 
-                            return [
-                                'id' => $winnerGroup->first()->id,
-                                'name' => $winnerGroup->first()->name,
-                                'premio' => number_format($totalPrize, 2, ',', '.'),
-                                'status' => $winnerGroup->first()->status,
-                                'game_name' => $winnerGroup->first()->game_name, // Certifique-se de que $gameName está definido aqui
-                                'sort_date' => $winnerGroup->first()->sort_date,
-                                'num_tickets' => $totalTickets,
-                                'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
-                            ];
-                        })->values()->all();
+                        $totalPrize = $winnerGroup->sum('premio');
 
                         return [
-                            'game_name' => $gameName,
-                            'winners' => $consolidatedWinners,
+                            'id' => $winnerGroup->first()->id,
+                            'name' => $winnerGroup->first()->name,
+                            'premio' => number_format($totalPrize, 2, ',', '.'),
+                            'status' => $winnerGroup->first()->status,
+                            'game_name' => $winnerGroup->first()->game_name, // Certifique-se de que $gameName está definido aqui
+                            'sort_date' => $winnerGroup->first()->sort_date,
+                            'num_tickets' => $occurrences, // Adiciona a contagem de ocorrências
+                            'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
                         ];
-                    })
-                    ->sortBy('game_name')
-                    ->pluck('winners')
-                    ->collapse() // Flatten the array
-                    ->values()
-                    ->all();
+                    })->values()->all();
 
-                return $consolidatedResults;
-            } catch (\Throwable $th) {
-                throw new Exception($th);
-            }
+                    return [
+                        'game_name' => $gameName,
+                        'winners' => $consolidatedWinners,
+                    ];
+                })
+                ->sortBy('game_name')
+                ->pluck('winners')
+                ->collapse() // Flatten the array
+                ->values()
+                ->all();
+
+            return $consolidatedResults;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
         }
-
-
+    }
 
     public function aprovePrize(Request $request)
     {
