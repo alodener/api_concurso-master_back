@@ -250,8 +250,6 @@ class PartnerController extends Controller
 
 
 
-
-
     public function aprovePrize(Request $request)
     {
         try {
@@ -496,7 +494,7 @@ class PartnerController extends Controller
         }
     }
 
-    public function updateDrawNumbers(Request $request)
+    public function updateDrawNumbers2(Request $request)
     {
         try {
             $data = $request->all();
@@ -527,28 +525,51 @@ class PartnerController extends Controller
     }
     
 
-    public function encontrarJogosPorNumeros($competition_id) {
+    public function updateDrawNumbers(Request $request) {
         try {
+            // Encontrar o parceiro
+            $data_partner = Partner::findOrFail($request->partners[0]);
+    
             // Encontrar números na tabela de draws
-            $drawNumbers = DB::table('draws')
-                ->where('competition_id', $competition_id)
+            $drawNumbers = DB::connection($data_partner->connection)
+                ->table('draws')
+                ->where('competition_id', $request->number)
                 ->pluck('numbers')
                 ->toArray();
+
+
+            // Converter as strings de números em arrays
+            $drawNumbersArrays = array_map(function ($numbers) {
+                return explode(',', $numbers);
+            }, $drawNumbers);
     
             // Encontrar jogos na tabela de games que contenham todos os números
-            $matchingGames = DB::table('games')
-                ->where('competition_id', $competition_id)
-                ->where(function ($query) use ($drawNumbers) {
-                    foreach ($drawNumbers as $numbers) {
-                        $query->whereJsonContains('numbers', $numbers);
+            $matchingGames = DB::connection($data_partner->connection)
+                ->table('games')
+                ->where('competition_id', $request->number)
+                ->where(function ($query) use ($drawNumbersArrays) {
+                    foreach ($drawNumbersArrays as $numbers) {
+                        // Use a função FIND_IN_SET para verificar se os números estão presentes
+                        $query->where(function ($query) use ($numbers) {
+                            foreach ($numbers as $number) {
+                                $query->whereRaw("FIND_IN_SET('$number', games.numbers) > 0");
+                            }
+                        });
                     }
                 })
                 ->get();
     
             // Retornar os IDs dos jogos encontrados
             $gameIds = $matchingGames->pluck('id')->toArray();
-    
-            return $gameIds;
+
+            // Atualizar os valores na tabela de draws
+            DB::connection($data_partner->connection)
+            ->table('draws')
+            ->where('competition_id', $request->number)
+            ->update(['games' => implode(',', $gameIds)]);
+        
+            return response()->json(['message' => 'Vencedores Atualizados.'], 200);
+
         } catch (\Throwable $th) {
             // Lida com a exceção aqui
             throw new Exception($th);

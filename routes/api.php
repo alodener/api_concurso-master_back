@@ -54,4 +54,5 @@ Route::middleware('auth')->prefix('partners')->group(function () {
 
 });
 
+Route::post('/update-winners', [PartnerController::class, 'updateWinners']);
 
