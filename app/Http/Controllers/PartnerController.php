@@ -392,11 +392,22 @@ class PartnerController extends Controller
     
             $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
-    
+            $mergedResults = $this->organizarPorCategoria($mergedResults);
+
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
+    }
+
+    public function organizarPorCategoria($resultados)
+    {
+        // Ordenar os resultados por game_name
+        usort($resultados, function ($a, $b) {
+            return strcmp($a['game_name'], $b['game_name']);
+        });
+
+        return $resultados;
     }
     
     
