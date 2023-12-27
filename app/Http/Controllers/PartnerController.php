@@ -57,7 +57,31 @@ class PartnerController extends Controller
                         }
                     }
                 }
-                if($data['category'] != 'dupla_sena') {
+                 if($data['category'] == 'mega_kino') {
+                    foreach ($type_games as $type_game) {
+                        $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
+                        if(!$has_competition) {
+                             $letras = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+                            foreach ($letras as $letra) {
+                                DB::connection($data_partner['connection'])->table('competitions')->insert([
+                                'number' => $data['number'] . $letra,
+                                'type_game_id' => $type_game->id,
+                                'sort_date' => $data['date_of_sort'],
+                                'created_at' => Carbon::now('America/Sao_Paulo'),
+                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                                ]);
+                            }
+                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                                'number' => $data['number'],
+                                'type_game_id' => $type_game->id,
+                                'sort_date' => $data['date_of_sort'],
+                                'created_at' => Carbon::now('America/Sao_Paulo'),
+                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                            ]);
+                        }
+                    }
+                }
+                if($data['category'] != 'dupla_sena' && $data['category'] != 'mega_kino' ) {
                     foreach ($type_games as $type_game) {
                         $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
                         if(!$has_competition) {
