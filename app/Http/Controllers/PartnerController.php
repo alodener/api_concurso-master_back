@@ -416,7 +416,7 @@ class PartnerController extends Controller
                             'status' => $winnerStatus,
                             'game_name' => $gameName,
                             'sort_date' => $sortDate,
-                            'num_tickets' => rand(1, 5),
+                            'num_tickets' => $num_tickets,
                             'premio_formatted' => $this->formatMoney($winnerPrize),
                         ];
                     }
@@ -426,7 +426,7 @@ class PartnerController extends Controller
             // Add fake winners for each unique game_name
             $uniqueGameNames = array_unique($allGameNames);
             foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
     
@@ -440,7 +440,7 @@ class PartnerController extends Controller
         }
     }
     
-    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName)
+    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
     {
         $fakeWinnersList = [];
         $remainingPercent = 100;
@@ -471,7 +471,7 @@ class PartnerController extends Controller
                 'premio' => $winnerPrize,
                 'status' => $winnerStatus,
                 'game_name' => $gameName,
-                // 'num_tickets' => 999,
+                'sort_date' => $sortDate,
                 'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
             ];
