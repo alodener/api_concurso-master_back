@@ -391,39 +391,80 @@ class PartnerController extends Controller
             $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
     
-            $gameName = $resultInMultiplePartners[0]['game_name'] ?? null;
-            $sortDate = Carbon::parse($resultInMultiplePartners[0]['sort_date'] ?? now())->format('d/m/Y');
-            $num_tickets = $resultInMultiplePartners[0]['num_tickets'] ?? null;
+            $allGameNames = [];
     
-            foreach ($winners as $key => $winner) {
-                $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
+            foreach ($resultInMultiplePartners as $result) {
+                $gameName = $result['game_name'] ?? null;
+                $allGameNames[] = $gameName;
     
-                $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
-                $winnerStatus = rand(1, 3);
-                $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
+                $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                $num_tickets = $result['num_tickets'] ?? null;
     
-                $winnersList[] = [
-                    'id' => $winnerId,
-                    'name' => $winnerFullName,
-                    'premio' => $winnerPrize,
-                    'status' => $winnerStatus,
-                    'game_name' => $gameName,
-                    'sort_date' => $sortDate,
-                    'num_tickets' => $num_tickets,
-                    'premio_formatted' => $this->formatMoney($winnerPrize),
-                ];
+                foreach ($winners as $key => $winner) {
+                    // Check if the current winner is associated with the current game_name
+                    if ($winner->game_name === $gameName) {
+                        $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
+    
+                        $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
+                        $winnerStatus = rand(1, 3);
+                        $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
+    
+                        $winnersList[] = [
+                            'id' => $winnerId,
+                            'name' => $winnerFullName,
+                            'premio' => $winnerPrize,
+                            'status' => $winnerStatus,
+                            'game_name' => $gameName,
+                            'sort_date' => $sortDate,
+                            'num_tickets' => $num_tickets,
+                            'premio_formatted' => $this->formatMoney($winnerPrize),
+                        ];
+                    }
+                }
+            }
+    
+            // Add fake winners for each unique game_name
+            $uniqueGameNames = array_unique($allGameNames);
+            foreach ($uniqueGameNames as $gameName) {
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName);
+                $winnersList = array_merge($winnersList, $fakeWinners);
             }
     
             $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
             $mergedResults = $this->organizarPorCategoria($mergedResults);
-
+    
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
+    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName)
+    {
+        $fakeWinnersList = [];
 
+        for ($i = 0; $i < $numberOfWinners; $i++) {
+            $fakeWinner = People::inRandomOrder()->first(); // Obter um registro aleatório da tabela people
+            $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
+
+            $winnerPrize = intval($totalAmount / $numberOfWinners);
+            $winnerStatus = rand(1, 3);
+            $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
+
+            $fakeWinnersList[] = [
+                'id' => $winnerId,
+                'name' => $fakeWinnerFullName,
+                'premio' => $winnerPrize,
+                'status' => $winnerStatus,
+                'game_name' => $gameName,
+                'premio_formatted' => $this->formatMoney($winnerPrize),
+            ];
+        }
+
+        return $fakeWinnersList;
+    }
+    
     public function organizarPorCategoria($resultados)
     {
         // Ordenar os resultados por game_name
