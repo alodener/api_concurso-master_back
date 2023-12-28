@@ -458,6 +458,7 @@ class PartnerController extends Controller
                 'premio' => $winnerPrize,
                 'status' => $winnerStatus,
                 'game_name' => $gameName,
+                "num_tickets"=> random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
             ];
         }
