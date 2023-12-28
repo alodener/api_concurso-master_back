@@ -443,26 +443,39 @@ class PartnerController extends Controller
     private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName)
     {
         $fakeWinnersList = [];
-
+        $remainingPercent = 100;
+    
         for ($i = 0; $i < $numberOfWinners; $i++) {
             $fakeWinner = People::inRandomOrder()->first(); // Obter um registro aleatório da tabela people
             $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
-
-            $winnerPrize = intval($totalAmount / $numberOfWinners);
+    
+            // Gerar um percentual aleatório para este ganhador (considerando 1 a 10%)
+            $percentual = mt_rand(1, min(10, $remainingPercent));
+    
+            // Calcular o prêmio do ganhador com base no percentual
+            $winnerPrize = round($totalAmount * ($percentual / 100));
+    
+            // Atualizar o totalAmount para a próxima iteração
+            $totalAmount -= $winnerPrize;
+    
+            // Atualizar o remainingPercent
+            $remainingPercent -= $percentual;
+    
+            // Outros detalhes do ganhador
             $winnerStatus = rand(1, 3);
             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-
+    
             $fakeWinnersList[] = [
                 'id' => $winnerId,
                 'name' => $fakeWinnerFullName,
                 'premio' => $winnerPrize,
                 'status' => $winnerStatus,
                 'game_name' => $gameName,
-                "num_tickets"=> random_int(1, 4),
+                // 'num_tickets' => 999,
+                'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
             ];
         }
-
         return $fakeWinnersList;
     }
     
