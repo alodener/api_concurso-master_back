@@ -374,42 +374,30 @@ class PartnerController extends Controller
             $totalAmount = $request->premio;
             $numberOfPeople = $request->ganhadores;
     
-            // Verificar se o número de pessoas é válido
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
     
-            // Gerar fatores de distribuição com base no número de ganhadores
             $distributionFactors = $this->generateDistributionFactors($numberOfPeople);
     
-            // Obter ganhadores aleatórios a partir da tabela People
             $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
     
-            // Lista de ganhadores
             $winnersList = [];
     
-            // Ordenar ganhadores por prêmio em ordem decrescente
             $winners = $winners->sortByDesc(function ($winner) {
                 return $winner->premio;
             });
     
-            // Obter resultados de múltiplos parceiros para o request
             $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
     
-            // Lista de todos os nomes de jogos
             $allGameNames = [];
     
-            // Verificar se $resultInMultiplePartners está vazio, então usar a resposta de ganhadores falsos fornecida
             if (empty($resultInMultiplePartners)) {
-                $fakeWinnersResponse = $this->getFakeWinnersResponse();
-    
-                // Converter o formato de premio para float e adicionar à lista de ganhadores
-                foreach ($fakeWinnersResponse as $fakeWinner) {
-                    $fakeWinner['premio'] = str_replace(',', '.', $fakeWinner['premio']); // Converter para float
-                    $fakeWinner['premio_formatted'] = $this->formatMoney($fakeWinner['premio']);
-                    $winnersList[] = $fakeWinner;
-                }
+                // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
+                $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
+                $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                $num_tickets = $result['num_tickets'] ?? null;
             } else {
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
@@ -419,7 +407,7 @@ class PartnerController extends Controller
                     $num_tickets = $result['num_tickets'] ?? null;
     
                     foreach ($winners as $key => $winner) {
-                        // Verificar se o ganhador atual está associado ao jogo atual
+                        // Check if the current winner is associated with the current game_name
                         if ($winner->game_name === $gameName) {
                             $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
     
@@ -427,7 +415,6 @@ class PartnerController extends Controller
                             $winnerStatus = rand(1, 3);
                             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
     
-                            // Adicionar ganhador à lista
                             $winnersList[] = [
                                 'id' => $winnerId,
                                 'name' => $winnerFullName,
@@ -443,25 +430,47 @@ class PartnerController extends Controller
                 }
             }
     
-            // Adicionar ganhadores falsos para cada nome de jogo único
+            // Adicione ganhadores fictícios para cada nome de jogo único
             $uniqueGameNames = array_unique($allGameNames);
             foreach ($uniqueGameNames as $gameName) {
                 $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
     
-            // Mesclar resultados e ganhadores em uma lista única, ordenar por prêmio e organizar por categoria
             $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
             $mergedResults = $this->organizarPorCategoria($mergedResults);
     
-            // Responder com a lista de ganhadores
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
-            // Lidar com exceções
             throw new Exception($th);
         }
     }
+    
+    private function getAllAvailableGameNames()
+    {
+        $gameNames = [
+            'TS-LOTOMANIA TRES',
+            'TS - 7 TimeMania',
+            'TS - 7 diadeSorte',
+            'TS - 6 Megasena',
+            'TS - 6 Dupla sena',
+            'TS - 5 Quina',
+            'TS - 20 LotoMania',
+            'TS - 15 Lotofácill',
+            'MEGA KINO',
+            'LOTOFÁCIL 10',
+            'LOTOFACIL ONE',
+            'LOTINHA CORUJÃO',
+            'DUPLA SENA DOBRADA',
+            'DEZENA DO DIA DE SORTE',
+        ];
+
+        shuffle($gameNames); // Embaralhar os nomes aleatoriamente
+
+        return array_slice($gameNames, 0, 3); // Retornar os 3 primeiros nomes aleatórios
+    }
+
     
     
     private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
@@ -502,54 +511,6 @@ class PartnerController extends Controller
         }
         return $fakeWinnersList;
     }
-
-    private function getFakeWinnersResponse()
-    {
-        // Resposta de ganhadores falsos agrupados por game_name
-        return [
-            [
-                "id" => 919366,
-                "name" => "Josiane Cristina",
-                "premio" => "525,00",
-                "status" => 1,
-                "game_name" => "LTP - 15 Lotofácil",
-                "sort_date" => "2023-12-07 20:00:00",
-                "num_tickets" => 1,
-                "premio_formatted" => "R$ 525,00"
-            ],
-            [
-                "id" => 923225,
-                "name" => "Michele Cristina",
-                "premio" => "1.000,00",
-                "status" => 1,
-                "game_name" => "LTP - 5 Quina",
-                "sort_date" => "2023-12-07 20:00:00",
-                "num_tickets" => 1,
-                "premio_formatted" => "R$ 1.000,00"
-            ],
-            [
-                "id" => 920557,
-                "name" => "🇧🇷CLAUDIO.D",
-                "premio" => "360,00",
-                "status" => 1,
-                "game_name" => "LTP - 6 Megasena",
-                "sort_date" => "2023-12-07 20:00:00",
-                "num_tickets" => 2,
-                "premio_formatted" => "R$ 360,00"
-            ],
-            [
-                "id" => 1715633,
-                "name" => "Chispaloto da Sorte",
-                "premio" => "215,25",
-                "status" => 1,
-                "game_name" => "LTP - CHISPALOTO",
-                "sort_date" => "2023-12-07 17:50:00",
-                "num_tickets" => 1,
-                "premio_formatted" => "R$ 215,25"
-            ],
-        ];
-    }
-
     
     public function organizarPorCategoria($resultados)
     {
@@ -744,5 +705,7 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+    
+    
 
 }
