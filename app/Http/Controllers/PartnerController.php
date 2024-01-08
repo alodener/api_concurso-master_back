@@ -483,7 +483,7 @@ class PartnerController extends Controller
             $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
     
             // Gerar um percentual aleatório para este ganhador (considerando 1 a 10%)
-            $percentual = mt_rand(1, min(10, $remainingPercent));
+            $percentual = mt_rand(1, max(100, $remainingPercent));
     
             // Calcular o prêmio do ganhador com base no percentual
             $winnerPrize = round($totalAmount * ($percentual / 100));
