@@ -475,29 +475,27 @@ class PartnerController extends Controller
     
     private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
     {
+        // Chamar a função para gerar os percentuais
+        $percentages = $this->generatePercentages($numberOfWinners);
+
         $fakeWinnersList = [];
         $remainingPercent = 100;
-    
+
         for ($i = 0; $i < $numberOfWinners; $i++) {
-            $fakeWinner = People::inRandomOrder()->first(); // Obter um registro aleatório da tabela people
+            $fakeWinner = People::inRandomOrder()->first();
             $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
-    
-            // Gerar um percentual aleatório para este ganhador (considerando 1 a 10%)
-            $percentual = mt_rand(1, max(100, $remainingPercent));
-    
-            // Calcular o prêmio do ganhador com base no percentual
+
+            // Usar o percentual da lista gerada
+            $percentual = $percentages[$i];
+
             $winnerPrize = round($totalAmount * ($percentual / 100));
-    
-            // Atualizar o totalAmount para a próxima iteração
+
             $totalAmount -= $winnerPrize;
-    
-            // Atualizar o remainingPercent
             $remainingPercent -= $percentual;
-    
-            // Outros detalhes do ganhador
+
             $winnerStatus = rand(1, 3);
             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-    
+
             $fakeWinnersList[] = [
                 'id' => $winnerId,
                 'name' => $fakeWinnerFullName,
@@ -509,7 +507,26 @@ class PartnerController extends Controller
                 'premio_formatted' => $this->formatMoney($winnerPrize),
             ];
         }
+
         return $fakeWinnersList;
+    }
+
+    private function generatePercentages($numberOfWinners)
+    {
+        $percentages = [];
+
+        // Distribuir percentuais aleatórios para cada ganhador
+        for ($i = 0; $i < $numberOfWinners; $i++) {
+            $percentages[] = mt_rand(1, 100);
+        }
+
+        // Normalizar os percentuais para garantir que a soma seja igual a 100%
+        $totalPercentage = array_sum($percentages);
+        $normalizedPercentages = array_map(function ($percentage) use ($totalPercentage) {
+            return round(($percentage / $totalPercentage) * 100, 2);
+        }, $percentages);
+
+        return $normalizedPercentages;
     }
     
     public function organizarPorCategoria($resultados)
