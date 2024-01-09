@@ -487,11 +487,20 @@ class PartnerController extends Controller
     
             // Usar o percentual da lista gerada
             $percentual = $percentages[$i];
-            
+    
             $winnerPrize = round($totalAmount * ($percentual / 100));
     
-            // $totalAmount -= $winnerPrize;
-            $remainingPercent -= $percentual;
+            // Verificar se o nome já está presente na mesma modalidade
+            $existingNames = array_column($fakeWinnersList, 'name');
+    
+            while (in_array($fakeWinnerFullName, $existingNames)) {
+                // Escolher um novo vencedor se o nome já estiver presente
+                $fakeWinner = People::inRandomOrder()->first();
+                $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
+            }
+    
+            // Adicionar o nome à lista de nomes já presentes
+            $existingNames[] = $fakeWinnerFullName;
     
             $winnerStatus = rand(1, 3);
             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
@@ -503,7 +512,7 @@ class PartnerController extends Controller
                 'percentual' => $percentual,
                 'status' => $winnerStatus,
                 'game_name' => $gameName,
-                'percentual'=> $percentual,
+                'percentual' => $percentual,
                 'sort_date' => $sortDate,
                 'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
@@ -519,6 +528,7 @@ class PartnerController extends Controller
     
         return $fakeWinnersList;
     }
+    
 
     public function generatePercentages($numberOfWinners)
     {
