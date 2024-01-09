@@ -368,6 +368,32 @@ class PartnerController extends Controller
         return Response("Alteração finalizadas com sucesso!", 200);
     }
 
+
+    private function getAllAvailableGameNames()
+    {
+        $gameNames = [
+            'TS-LOTOMANIA TRES',
+            'TS - 7 TimeMania',
+            'TS - 7 diadeSorte',
+            'TS - 6 Megasena',
+            'TS - 6 Dupla sena',
+            'TS - 5 Quina',
+            'TS - 20 LotoMania',
+            'TS - 15 Lotofácill',
+            'MEGA KINO',
+            'LOTOFÁCIL 10',
+            'LOTOFACIL ONE',
+            'LOTINHA CORUJÃO',
+            'DUPLA SENA DOBRADA',
+            'DEZENA DO DIA DE SORTE',
+        ];
+
+        shuffle($gameNames); // Embaralhar os nomes aleatoriamente
+
+        return array_slice($gameNames, 0, 3); // Retornar os 3 primeiros nomes aleatórios
+    }
+
+
     public function distributePrizes(Request $request)
     {
         try {
@@ -378,7 +404,7 @@ class PartnerController extends Controller
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
     
-            $distributionFactors = $this->generateDistributionFactors($numberOfPeople);
+            $distributionFactors = $this->generatePercentages($numberOfPeople);
     
             $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
     
@@ -447,71 +473,54 @@ class PartnerController extends Controller
         }
     }
     
-    private function getAllAvailableGameNames()
-    {
-        $gameNames = [
-            'TS-LOTOMANIA TRES',
-            'TS - 7 TimeMania',
-            'TS - 7 diadeSorte',
-            'TS - 6 Megasena',
-            'TS - 6 Dupla sena',
-            'TS - 5 Quina',
-            'TS - 20 LotoMania',
-            'TS - 15 Lotofácill',
-            'MEGA KINO',
-            'LOTOFÁCIL 10',
-            'LOTOFACIL ONE',
-            'LOTINHA CORUJÃO',
-            'DUPLA SENA DOBRADA',
-            'DEZENA DO DIA DE SORTE',
-        ];
-
-        shuffle($gameNames); // Embaralhar os nomes aleatoriamente
-
-        return array_slice($gameNames, 0, 3); // Retornar os 3 primeiros nomes aleatórios
-    }
-
-    
-    
     private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
     {
         // Chamar a função para gerar os percentuais
         $percentages = $this->generatePercentages($numberOfWinners);
-
+    
         $fakeWinnersList = [];
         $remainingPercent = 100;
-
+    
         for ($i = 0; $i < $numberOfWinners; $i++) {
             $fakeWinner = People::inRandomOrder()->first();
             $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
-
+    
             // Usar o percentual da lista gerada
             $percentual = $percentages[$i];
-
+            
             $winnerPrize = round($totalAmount * ($percentual / 100));
-
-            $totalAmount -= $winnerPrize;
+    
+            // $totalAmount -= $winnerPrize;
             $remainingPercent -= $percentual;
-
+    
             $winnerStatus = rand(1, 3);
             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-
+    
             $fakeWinnersList[] = [
                 'id' => $winnerId,
                 'name' => $fakeWinnerFullName,
                 'premio' => $winnerPrize,
+                'percentual' => $percentual,
                 'status' => $winnerStatus,
                 'game_name' => $gameName,
+                'percentual'=> $percentual,
                 'sort_date' => $sortDate,
                 'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
             ];
         }
-
+    
+        // Verificar se a soma dos percentuais é realmente 100%
+        $sumOfPercentages = array_sum($percentages);
+        if ($sumOfPercentages != 100) {
+            // Se não for 100%, ajustar o último percentual para compensar
+            $fakeWinnersList[count($fakeWinnersList) - 1]['percentual'] += (100 - $sumOfPercentages);
+        }
+    
         return $fakeWinnersList;
     }
 
-    private function generatePercentages($numberOfWinners)
+    public function generatePercentages($numberOfWinners)
     {
         $percentages = [];
 
@@ -539,24 +548,6 @@ class PartnerController extends Controller
         return $resultados;
     }
     
-    
-    
-    private function generateDistributionFactors($numberOfPeople)
-    {
-        $factors = [];
-    
-        for ($i = 0; $i < $numberOfPeople; $i++) {
-            $factors[] = mt_rand(1, 100) / 100;
-        }
-    
-        $sum = array_sum($factors);
-        $factors = array_map(function ($factor) use ($sum) {
-            return $factor / $sum;
-        }, $factors);
-    
-        return $factors;
-    }
-
 
     public function listCompetitions(Request $request)
     {

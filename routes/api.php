@@ -3,7 +3,6 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\PartnerController;
-use App\Http\Controllers\PrizeApproveController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +18,6 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
 
 
 
@@ -55,3 +53,4 @@ Route::middleware('auth')->prefix('partners')->group(function () {
 });
 
 
+Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
