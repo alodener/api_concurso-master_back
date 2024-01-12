@@ -377,26 +377,9 @@ class PartnerController extends Controller
 
     private function getAllAvailableGameNames()
     {
-        $gameNames = [
-            'TS-LOTOMANIA TRES',
-            'TS - 7 TimeMania',
-            'TS - 7 diadeSorte',
-            'TS - 6 Megasena',
-            'TS - 6 Dupla sena',
-            'TS - 5 Quina',
-            'TS - 20 LotoMania',
-            'TS - 15 Lotofácill',
-            'MEGA KINO',
-            'LOTOFÁCIL 10',
-            'LOTOFACIL ONE',
-            'LOTINHA CORUJÃO',
-            'DUPLA SENA DOBRADA',
-            'DEZENA DO DIA DE SORTE',
-        ];
+        $gameNames = [''];
 
-        shuffle($gameNames); // Embaralhar os nomes aleatoriamente
-
-        return array_slice($gameNames, 0, 3); // Retornar os 3 primeiros nomes aleatórios
+        return $gameNames;
     }
 
 
