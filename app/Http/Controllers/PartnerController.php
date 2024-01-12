@@ -201,7 +201,13 @@ class PartnerController extends Controller
     
                     $drawGames = DB::connection($data_partner['connection'])
                         ->table('games')
-                        ->select(['games.id', 'clients.name as name', 'games.premio', 'games.status', 'type_games.name as game_name'])
+                        ->select([
+                            'games.id',
+                            DB::raw("CONCAT(clients.name, ' ', clients.last_name) as `name`"),
+                            'games.premio',
+                            'games.status',
+                            'type_games.name as game_name'
+                        ])
                         ->join('clients', 'clients.id', '=', 'games.client_id')
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                         ->where('games.checked', 1)
