@@ -173,8 +173,8 @@ class PartnerController extends Controller
     {
         try {
             $data = $request->all();
-            $winners = [];
             $data_partner = Partner::findOrFail($data['partner']);
+            $total_premios = 0; // Variável para armazenar o total dos prêmios
     
             // Ajuste para pesquisa por data
             $concurses = DB::connection($data_partner['connection'])
@@ -219,25 +219,21 @@ class PartnerController extends Controller
                         $game->num_tickets = $num_tickets;
                         $game->premio_formatted = $this->formatMoney($game->premio);
     
+                        // Convertendo o valor do prêmio para float e somando ao total
+                        $total_premios += floatval(str_replace([',', 'R$', ' '], ['', '', ''], $game->premio));
+                        $game->total_premios = $total_premios; // Adicionando o total acumulado ao objeto do jogo
+    
                         $games[] = $game;
                     }
                 }
             }
     
-            $winners = collect($games)
-                ->groupBy('game_name')
-                ->map(function ($group) {
-                    return $group->sortByDesc('premio')->values()->all();
-                })
-                ->collapse()
-                ->all();
-    
-            $winners = $this->consolidateResultsByGameName($winners);
-            return $winners;
+            return $games; // Retorna os jogos com o total de prêmios acumulado
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
     
     public function consolidateResultsByGameName($rawResults)
     {
