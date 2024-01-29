@@ -286,36 +286,37 @@ class PartnerController extends Controller
             $data = $request->all();
             $winners = [];
             $data_partner = Partner::findOrFail($data['partner']);
-
+    
             $concurses = DB::connection($data_partner['connection'])
                 ->table('competitions')
                 ->whereDate('sort_date', '=', $data['date'])
                 ->pluck('id');
-
+    
             $draws = DB::connection($data_partner['connection'])
                 ->table('draws')
                 ->whereIn('competition_id', $concurses)
                 ->get();
-
+    
             $games = [];
-
+    
             foreach ($draws as $draw) {
                 if ($draw != null) {
                     $competition = DB::connection($data_partner['connection'])
                         ->table('competitions')
                         ->where('id', $draw->competition_id)
                         ->first();
-
+    
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw);
-
+    
                     $drawGames = DB::connection($data_partner['connection'])
                         ->table('games')
                         ->select([
                             'games.id', 
                             DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"), 
                             'games.premio', 
-                            'games.status', 
+                            'games.status',
+                            'games.random_game',
                             'type_games.name as game_name'
                         ])
                         ->join('clients', 'clients.id', '=', 'games.client_id')
@@ -324,17 +325,20 @@ class PartnerController extends Controller
                         ->where('games.status', 1)
                         ->whereIn('games.id', $numbers_draw)
                         ->get();
-
+    
                     foreach ($drawGames as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets;
                         $game->premio_formatted = $this->formatMoney($game->premio);
-
+    
+                        // Tratativa para random_game
+                        $game->random_game = $game->random_game == 1 ? 'Sim' : 'Não';
+    
                         $games[] = $game;
                     }
                 }
             }
-
+    
             $winners = collect($games)
                 ->groupBy('game_name')
                 ->map(function ($group) {
@@ -342,12 +346,14 @@ class PartnerController extends Controller
                 })
                 ->collapse()
                 ->all();
-
+    
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
+    
 
 
     private function formatMoney($value)
