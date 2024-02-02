@@ -234,47 +234,6 @@ class PartnerController extends Controller
         }
     }
     
-    
-    public function consolidateResultsByGameName($rawResults)
-    {
-        try {
-            $consolidatedResults = collect($rawResults)
-                ->groupBy('game_name')
-                ->map(function ($group, $gameName) {
-                    $consolidatedWinners = collect($group)->groupBy('name')->map(function ($winnerGroup) {
-                        // Conta quantas vezes cada pessoa apareceu na modalidade
-                        $occurrences = $winnerGroup->count();
-
-                        $totalPrize = $winnerGroup->sum('premio');
-
-                        return [
-                            'id' => $winnerGroup->first()->id,
-                            'name' => $winnerGroup->first()->name,
-                            'premio' => number_format($totalPrize, 2, ',', '.'),
-                            'status' => $winnerGroup->first()->status,
-                            'game_name' => $winnerGroup->first()->game_name, // Certifique-se de que $gameName está definido aqui
-                            'sort_date' => $winnerGroup->first()->sort_date,
-                            'num_tickets' => $occurrences, // Adiciona a contagem de ocorrências
-                            'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
-                        ];
-                    })->values()->all();
-
-                    return [
-                        'game_name' => $gameName,
-                        'winners' => $consolidatedWinners,
-                    ];
-                })
-                ->sortBy('game_name')
-                ->pluck('winners')
-                ->collapse() // Flatten the array
-                ->values()
-                ->all();
-
-            return $consolidatedResults;
-        } catch (\Throwable $th) {
-            throw new Exception($th);
-        }
-    }
 
     public function aprovePrize(Request $request)
     {
@@ -393,110 +352,84 @@ class PartnerController extends Controller
 
     public function distributePrizes(Request $request)
     {
-        try {
-            $totalAmount = $request->premio;
-            $numberOfPeople = $request->ganhadores;
+        $totalAmount = $request->premio;
+        $numberOfPeople = $request->ganhadores;
     
-            if ($numberOfPeople <= 0) {
-                return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
-            }
+        if ($numberOfPeople <= 0) {
+            return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
+        }
     
-            $distributionFactors = $this->generatePercentages($numberOfPeople);
+        $distributionFactors = $this->generatePercentages($numberOfPeople);
+        $winners = People::inRandomOrder()->limit($numberOfPeople)->get()->sortByDesc('premio');
+        $resultInMultiplePartners = array_values(array_filter($this->getResultInMultiplePartners($request)));
     
-            $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
+        $winnersList = [];
+        $allGameNames = [];
     
-            $winnersList = [];
+        foreach ($resultInMultiplePartners as $result) {
+            $gameName = $result->game_name ?? null;
+            $allGameNames[] = $gameName;
+            $sortDate = Carbon::parse($result->sort_date ?? now())->format('d/m/Y');
+            $num_tickets = $result->num_tickets ?? null;
     
-            $winners = $winners->sortByDesc(function ($winner) {
-                return $winner->premio;
-            });
+            foreach ($winners as $key => $winner) {
+                if ($winner->game_name === $gameName) {
+                    $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
+                    $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
     
-            $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
-            $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-    
-            $allGameNames = [];
-    
-            if (empty($resultInMultiplePartners)) {
-                // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
-                $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
-                $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
-                $num_tickets = $result['num_tickets'] ?? null;
-            } else {
-                foreach ($resultInMultiplePartners as $result) {
-                    $gameName = $result['game_name'] ?? null;
-                    $allGameNames[] = $gameName;
-    
-                    $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
-                    $num_tickets = $result['num_tickets'] ?? null;
-    
-                    foreach ($winners as $key => $winner) {
-                        // Check if the current winner is associated with the current game_name
-                        if ($winner->game_name === $gameName) {
-                            $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
-    
-                            $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
-                            $winnerStatus = rand(1, 3);
-                            $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-    
-                            $winnersList[] = [
-                                'id' => $winnerId,
-                                'name' => $winnerFullName,
-                                'premio' => $winnerPrize,
-                                'status' => $winnerStatus,
-                                'game_name' => $gameName,
-                                'sort_date' => $sortDate,
-                                'num_tickets' => $num_tickets,
-                                'premio_formatted' => $this->formatMoney($winnerPrize),
-                            ];
-                        }
-                    }
+                    $winnersList[] = [
+                        'id' => str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT),
+                        'name' => $winnerFullName,
+                        'premio' => $winnerPrize,
+                        'status' => rand(1, 3),
+                        'game_name' => $gameName,
+                        'sort_date' => $sortDate,
+                        'num_tickets' => $num_tickets,
+                        'premio_formatted' => $this->formatMoney($winnerPrize),
+                    ];
                 }
             }
-    
-            // Adicione ganhadores fictícios para cada nome de jogo único
-            $uniqueGameNames = array_unique($allGameNames);
-            foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
-                $winnersList = array_merge($winnersList, $fakeWinners);
-            }
-    
-            $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
-            $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
-            $mergedResults = $this->organizarPorCategoria($mergedResults);
-    
-            return response()->json($mergedResults, 200);
-        } catch (\Throwable $th) {
-            throw new Exception($th);
         }
+    
+        if (empty($resultInMultiplePartners)) {
+            $allGameNames = $this->getAllAvailableGameNames();
+        }
+       
+        $ultimoItem = end($resultInMultiplePartners);
+        $totalParcial = $ultimoItem ? $ultimoItem->total_premios : 0;
+
+        $uniqueGameNames = array_unique($allGameNames);
+        foreach ($uniqueGameNames as $gameName) {
+            $sortDate = $sortDate ?? Carbon::parse(now())->format('d/m/Y');
+            $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate, $totalParcial);
+            $winnersList = array_merge($winnersList, $fakeWinners);
+        }
+    
+        $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
+    
+        return response()->json($mergedResults, 200);
     }
     
-    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
+    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate, $totalParcial)
     {
-        // Chamar a função para gerar os percentuais
         $percentages = $this->generatePercentages($numberOfWinners);
-    
         $fakeWinnersList = [];
-        $remainingPercent = 100;
+        $totalPremios = $totalParcial; // aqui vai receber, o último item da lista real, e caso não tenha nada por ser zero
     
         for ($i = 0; $i < $numberOfWinners; $i++) {
             $fakeWinner = People::inRandomOrder()->first();
             $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
     
-            // Usar o percentual da lista gerada
             $percentual = $percentages[$i];
-    
             $winnerPrize = round($totalAmount * ($percentual / 100));
+            $totalPremios += $winnerPrize; // Adiciona o prêmio ao total
     
             // Verificar se o nome já está presente na mesma modalidade
             $existingNames = array_column($fakeWinnersList, 'name');
-    
             while (in_array($fakeWinnerFullName, $existingNames)) {
-                // Escolher um novo vencedor se o nome já estiver presente
                 $fakeWinner = People::inRandomOrder()->first();
                 $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
             }
-    
-            // Adicionar o nome à lista de nomes já presentes
             $existingNames[] = $fakeWinnerFullName;
     
             $winnerStatus = rand(1, 3);
@@ -509,22 +442,28 @@ class PartnerController extends Controller
                 'percentual' => $percentual,
                 'status' => $winnerStatus,
                 'game_name' => $gameName,
-                'percentual' => $percentual,
                 'sort_date' => $sortDate,
                 'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
+                'total_premios' => $totalPremios, // Adiciona o total acumulado até agora
             ];
         }
     
-        // Verificar se a soma dos percentuais é realmente 100%
+        // Ajuste de percentuais, se necessário
         $sumOfPercentages = array_sum($percentages);
         if ($sumOfPercentages != 100) {
-            // Se não for 100%, ajustar o último percentual para compensar
-            $fakeWinnersList[count($fakeWinnersList) - 1]['percentual'] += (100 - $sumOfPercentages);
+            $lastIndex = count($fakeWinnersList) - 1;
+            $fakeWinnersList[$lastIndex]['percentual'] += (100 - $sumOfPercentages);
+            $adjustedPrize = round($totalAmount * ($fakeWinnersList[$lastIndex]['percentual'] / 100));
+            $totalPremios -= $fakeWinnersList[$lastIndex]['premio'];
+            $totalPremios += $adjustedPrize;
+            $fakeWinnersList[$lastIndex]['premio'] = $adjustedPrize;
+            $fakeWinnersList[$lastIndex]['total_premios'] = $totalPremios;
         }
     
         return $fakeWinnersList;
     }
+    
     
 
     public function generatePercentages($numberOfWinners)
