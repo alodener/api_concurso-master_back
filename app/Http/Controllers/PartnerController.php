@@ -284,62 +284,56 @@ class PartnerController extends Controller
     {
         try {
             $data = $request->all();
-            $winners = [];
+    
+            // Busca informações do parceiro
             $data_partner = Partner::findOrFail($data['partner']);
     
-            $concurses = DB::connection($data_partner['connection'])
+            // Busca os IDs das competições para a data especificada
+            $competitionIds = DB::connection($data_partner['connection'])
                 ->table('competitions')
                 ->whereDate('sort_date', '=', $data['date'])
                 ->pluck('id');
     
-            $draws = DB::connection($data_partner['connection'])
+            // Busca os sorteios e os respectivos jogos de uma só vez, evitando múltiplas consultas
+            $drawsGames = DB::connection($data_partner['connection'])
                 ->table('draws')
-                ->whereIn('competition_id', $concurses)
+                ->whereIn('competition_id', $competitionIds)
                 ->get();
     
-            $games = [];
+            $numbersDraw = $drawsGames->flatMap(function ($draw) {
+                return explode(',', $draw->games);
+            })->unique()->all();
     
-            foreach ($draws as $draw) {
-                if ($draw != null) {
-                    $competition = DB::connection($data_partner['connection'])
-                        ->table('competitions')
-                        ->where('id', $draw->competition_id)
-                        ->first();
+            // Busca todos os jogos relacionados aos sorteios de uma vez
+            $gamesInfo = DB::connection($data_partner['connection'])
+                ->table('games')
+                ->select([
+                    'games.id', 
+                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"), 
+                    'games.premio', 
+                    'games.status',
+                    'games.random_game',
+                    'type_games.name as game_name',
+                    'competitions.sort_date'
+                ])
+                ->join('clients', 'clients.id', '=', 'games.client_id')
+                ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
+                ->join('competitions', 'competitions.id', '=', 'games.competition_id')
+                ->whereIn('games.id', $numbersDraw)
+                ->where('games.checked', 1)
+                ->where('games.status', 1)
+                ->get();
     
-                    $numbers_draw = array_map('intval', explode(',', $draw->games));
-                    $num_tickets = count($numbers_draw);
+            // Processa os jogos para adicionar informações adicionais
+            $processedGames = $gamesInfo->map(function ($game) {
+                $game->premio_formatted = $this->formatMoney($game->premio);
+                $game->random_game = $game->random_game == 1 ? 'Sim' : 'Não';
+                // Adicione aqui mais lógicas de processamento conforme necessário
+                return $game;
+            });
     
-                    $drawGames = DB::connection($data_partner['connection'])
-                        ->table('games')
-                        ->select([
-                            'games.id', 
-                            DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"), 
-                            'games.premio', 
-                            'games.status',
-                            'games.random_game',
-                            'type_games.name as game_name'
-                        ])
-                        ->join('clients', 'clients.id', '=', 'games.client_id')
-                        ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
-                        ->where('games.checked', 1)
-                        ->where('games.status', 1)
-                        ->whereIn('games.id', $numbers_draw)
-                        ->get();
-    
-                    foreach ($drawGames as $game) {
-                        $game->sort_date = $competition->sort_date;
-                        $game->num_tickets = $num_tickets;
-                        $game->premio_formatted = $this->formatMoney($game->premio);
-    
-                        // Tratativa para random_game
-                        $game->random_game = $game->random_game == 1 ? 'Sim' : 'Não';
-    
-                        $games[] = $game;
-                    }
-                }
-            }
-    
-            $winners = collect($games)
+            // Agrupa os jogos processados por nome do jogo e ordena por prêmio
+            $winners = $processedGames
                 ->groupBy('game_name')
                 ->map(function ($group) {
                     return $group->sortByDesc('premio')->values()->all();
@@ -354,8 +348,7 @@ class PartnerController extends Controller
     }
     
     
-
-
+    
     private function formatMoney($value)
     {
         return $value >= 1000 ? 'R$ ' . number_format($value, 2, ',', '.') : 'R$ ' . number_format($value, 2, ',', '.');
