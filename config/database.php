@@ -297,7 +297,7 @@ return [
             'url' => env('DATABASE_URL'),
             'host' => '92.204.144.50',
             'port' => '3306',
-            'database' => 'megapix_BD_PRDO',
+            'database' => 'megapix_BD_PROD',
             'username' => 'megapix_PROD_USER',
             'password' => 'SmartPayBD22',
             'unix_socket' => env('DB_SOCKET', ''),
