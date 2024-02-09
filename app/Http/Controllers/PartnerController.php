@@ -359,8 +359,6 @@ class PartnerController extends Controller
     }
     
     
-    
-    
     private function formatMoney($value)
     {
         return $value >= 1000 ? 'R$ ' . number_format($value, 2, ',', '.') : 'R$ ' . number_format($value, 2, ',', '.');
