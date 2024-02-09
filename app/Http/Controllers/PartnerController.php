@@ -340,7 +340,7 @@ class PartnerController extends Controller
                 })
                 ->collapse()
                 ->all();
-    
+            $winners = $this->consolidateResultsByGameName($winners);
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
