@@ -328,24 +328,36 @@ class PartnerController extends Controller
             $processedGames = $gamesInfo->map(function ($game) {
                 $game->premio_formatted = $this->formatMoney($game->premio);
                 $game->random_game = $game->random_game == 1 ? 'Sim' : 'Não';
-                // Adicione aqui mais lógicas de processamento conforme necessário
                 return $game;
             });
     
-            // Agrupa os jogos processados por nome do jogo e ordena por prêmio
+            // Agrupa os jogos processados por nome do jogo e nome do cliente, e soma os prêmios
             $winners = $processedGames
-                ->groupBy('game_name')
-                ->map(function ($group) {
-                    return $group->sortByDesc('premio')->values()->all();
+                ->groupBy(function ($item) {
+                    // Chave de agrupamento combinada
+                    return $item->game_name . '|' . $item->name;
                 })
-                ->collapse()
-                ->all();
-            $winners = $this->consolidateResultsByGameName($winners);
+                ->map(function ($group) {
+                    $first = $group->first();
+                    $sumPremio = $group->sum('premio');
+                    return [
+                        'id' => $group->pluck('id')->all(), // Todos os IDs como array
+                        'name' => $first->name,
+                        'premio' => $sumPremio,
+                        'status' => $first->status,
+                        'random_game' => $first->random_game,
+                        'game_name' => $first->game_name,
+                        'sort_date' => $first->sort_date,
+                        'premio_formatted' => $this->formatMoney($sumPremio) // Formata a soma dos prêmios
+                    ];
+                })->values()->all();
+    
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
     
     
     
