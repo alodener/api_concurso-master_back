@@ -373,23 +373,41 @@ class PartnerController extends Controller
         $data = $request->all();
         $data_partner = Partner::findOrFail($data['partner']);
         
-        if($data['status'] == 2) {
-            $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $data['id'])->first();
-            $client_data = DB::connection($data_partner['connection'])->table('clients')->find($data_game->client_id);
-            $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
-            if($user_data) {
-                $value = floatval($data_game->premio) + floatval($user_data->available_withdraw);
-                $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $value]);
-            }else {
-                $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
-                $value = floatval($data_game->premio) + floatval($user_data_default->available_withdraw);
-                $user_update = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->update(['available_withdraw' => $value]);
+        $total_premio = 0;
+        $client_id = null;
+        
+        foreach ($data['id'] as $id) {
+            $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $id)->first();
+            
+            if($data['status'] == 2 && $data_game) {
+                $total_premio += floatval($data_game->premio);
+                $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
             }
-
+            
+            $game = DB::connection($data_partner['connection'])->table('games')->where('id', $id)->update(['status' => $data['status']]);
         }
-        $game = DB::connection($data_partner['connection'])->table('games')->where('id', $data['id'])->update(['status' => $data['status']]);
-        return Response("Alteração finalizadas com sucesso!", 200);
+        
+        if($total_premio > 0 && $client_id) {
+            $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
+            if($client_data) {
+                $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
+                if($user_data) {
+                    $new_value = $total_premio + floatval($user_data->available_withdraw);
+                    $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                } else {
+                    // Atualiza o usuário padrão se o usuário específico não for encontrado
+                    $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                    if($user_data_default) {
+                        $new_value = $total_premio + floatval($user_data_default->available_withdraw);
+                        $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+                    }
+                }
+            }
+        }
+        
+        return response()->json(["message" => "Alteração finalizada com sucesso!"], 200);
     }
+    
 
 
     private function getAllAvailableGameNames()
