@@ -74,38 +74,46 @@ class ApostasFeitasController extends Controller
             $data = $request->all();
 
             $validator = Validator::make($data, [
-                'nome_usuario' => 'required|string|max:255',
-                'usuario_id' => ['required', 'numeric', 'regex:/^\d+$/'],
-                'tipo_jogo' => 'required|string|max:255',
-                'tipo_jogo_id' => ['required', 'numeric', 'regex:/^\d+$/'],
-                'jogo' => 'required|string|max:255',
-                'jogo_id' => ['required', 'numeric', 'regex:/^\d+$/'],
-                'bilhetes' => 'required|string|max:255',
-                'valor_aposta' => ['required', 'numeric', 'regex:/^\d+(\.\d{1,2})?$/']
+                    'nome_usuario' => 'required|string|max:255',
+                    'usuario_id' => 'required|integer|max:11',
+                    'tipo_jogo' => 'required|string|max:255',
+                    'jogo' => 'required|string|max:255',
+                    'jogo_id' => 'required|integer|max:11',
+                    'valor_aposta' => 'required|string|max:255',
+                    'valor_premio' => 'required|string|max:255',
+                    'numbers' => 'required|string',
+                    'concurso' => 'required|string|max:255',
             ]);
 
             if ($validator->fails()) {
-                return redirect()->back()->withErrors($validator)->withInput();
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $bilhetes = explode(',', $data['numbers']);
+
+            foreach($bilhetes as $bilhete){
+                $aposta = new Apostas();
+                $aposta->nome_usuario = $data['nome_usuario'];
+                $aposta->usuario_id = $data['usuario_id'];
+                $aposta->tipo_jogo = $data['tipo_jogo'];
+                $aposta->jogo = $data['jogo'];
+                $aposta->jogo_id = $data['jogo_id'];
+                $aposta->bilhete = $bilhete;
+                $aposta->valor_aposta = floatval($data['valor_aposta']);
+                $aposta->valor_premio = floatval($data['valor_premio']);
+                $aposta->concurso = $data['concurso'];
+                $aposta->save();
             }
             
-            $aposta = new Apostas();
-            $aposta->nome_usuario = $data['nome_usuario'];
-            $aposta->usuario_id = $data['usuario_id'];
-            $aposta->tipo_jogo = $data['tipo_jogo'];
-            $aposta->tipo_jogo_id = $data['tipo_jogo_id'];
-            $aposta->jogo = $data['jogo'];
-            $aposta->jogo_id = $data['jogo_id'];
-            $aposta->bilhetes = $data['bilhetes'];
-            $aposta->valor_aposta = floatval($data['valor_aposta']);
-            $aposta->criacao_aposta = new DateTime();
-            $aposta->save();
-
             return response()->json(['success' => true], 200);
-
-            return $aposta;
             
         } catch (\Throwable $th) {
-            throw new Exception($th);
+            dd([
+                'erro' => $th->getMessage(),
+                'line' => $th->getLine(),
+                'file' => $th->getFile()
+            ]);
+            //throw new Exception($th);
         }
     }
 }

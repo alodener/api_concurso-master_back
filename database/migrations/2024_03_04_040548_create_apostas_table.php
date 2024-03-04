@@ -16,16 +16,12 @@ return new class extends Migration
             $table->string('nome_usuario');
             $table->integer('usuario_id');
             $table->string('tipo_jogo');
-            $table->integer('tipo_jogo_id');
             $table->string('jogo');
             $table->integer('jogo_id');
             $table->float('valor_aposta');
-            $table->text('bilhete');
-            $table->integer('banca_id');
-            $table->integer('concurso');
-            $table->string('participante');
-            $table->integer('participante_id');
-            $table->dateTime('criacao_aposta');
+            $table->float('valor_premio');
+            $table->string('bilhete');
+            $table->string('concurso');
             $table->timestamps();
         });
     }

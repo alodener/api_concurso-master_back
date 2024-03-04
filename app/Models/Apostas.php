@@ -13,11 +13,11 @@ class Apostas extends Model
         'nome_usuario',
         'usuario_id',
         'tipo_jogo',
-        'tipo_jogo_id',
         'jogo',
         'jogo_id',
-        'bilhetes',
         'valor_aposta',
-        'criacao_aposta'
+        'valor_premio',
+        'bilhete',
+        'concurso'
     ];
 }
