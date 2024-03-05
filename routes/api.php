@@ -28,7 +28,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth')->prefix('apostas-feitas')->group(function () {
-    Route::get('/', [ApostasFeitasController::class, 'show']);
+   Route::post('/show', [ApostasFeitasController::class, 'filter']);
 });
 
 Route::middleware('auth')->prefix('users')->group(function () {

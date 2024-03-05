@@ -13,31 +13,41 @@ use Illuminate\Support\Facades\Validator;
 class ApostasFeitasController extends Controller
 {
 
-    public function show(Request $request){
+    public function filter(Request $request){
         try {
 
-            $roles = ['super_admin', 'socio', 'admin'];
+             $roles = ['super_admin', 'socio', 'admin'];
 
-            if (in_array(Auth::user()->role, $roles)) {
+             if (in_array(Auth::user()->role, $roles)) {
 
-                $request->validate([
-                    // 'banca' => 'required|exists:categories,id',
-                    // 'modalide' => 'required|date',
+                $data = $request->all();
+
+                $validator = Validator::make($data, [
+                    'banca' => 'required|string',
+                    'modalidade' => 'required|integer',
                     'inicio' => 'required|date',
                     'fim' => 'required|date',
                 ]);
 
-                $banca = $request->input('banca_id');
-                $inicio = $request->input('inicio');
-                $fim = $request->input('fim');
+                if ($validator->fails()) {
+                    return response()->json(['errors' => $validator->errors()], 422);
+                }
+
+                $banca = $request->input('banca');
+                $modalidade = $request->input('modalidade');
+                $inicio = $request->input('inicio')." 00:00";
+                $fim = $request->input('fim')." 23:59";
 
                 $data = Apostas::whereBetween('created_at', [$inicio, $fim])
-                 ->where('banda_id', $banca)
+                 ->where('tipo_jogo', $banca)
+                 ->where('jogo_id', $modalidade)
                  ->get();
                 $dados = [];
+                $dados['info'] = [];
                 $valorTotal = 0;
                 $totalBilhetes = 0;
                 $totalUsuarios = 0;
+                $concursos = [];
 
                 foreach($data as $info){
 
@@ -47,16 +57,24 @@ class ApostasFeitasController extends Controller
 
                     $date = new DateTime($info['created_at']);
 
-                    array_push($dados, [
+                    if(!in_array($info['concurso'], $concursos)){
+                        array_push($concursos, $info['concurso']);
+                    }
+
+                    array_push($dados['info'], [
                         'id' => $info['id'],
                         'nome' => $info['nome_usuario'],
                         'tipo_jogo' => $info['tipo_jogo'],
                         'jogo' => $info['jogo'],
                         'valor' => number_format($info['valor_aposta'], 2, ',', '.'),
+                        'premio' => number_format($info['valor_premio'], 2, ',', '.'),
                         'criacao' => $date->format('d/m/Y H:i:s'),
-                        'bilhetes' => $info['bilhetes'],
+                        'bilhete' => $info['bilhete'],
+                        'concurso' => $info['concurso'],
                     ]);
                 }
+
+                $dados['concursos'] = implode(', ', $concursos);
 
                 return response()->json(['success' => true, 'data' => $dados], 200);
             }
@@ -108,12 +126,7 @@ class ApostasFeitasController extends Controller
             return response()->json(['success' => true], 200);
             
         } catch (\Throwable $th) {
-            dd([
-                'erro' => $th->getMessage(),
-                'line' => $th->getLine(),
-                'file' => $th->getFile()
-            ]);
-            //throw new Exception($th);
+            throw new Exception($th);
         }
     }
 }
