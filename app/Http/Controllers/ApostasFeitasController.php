@@ -46,16 +46,19 @@ class ApostasFeitasController extends Controller
                 $dados['info'] = [];
                 $valorTotal = 0;
                 $totalBilhetes = 0;
-                $totalUsuarios = 0;
+                $totalUsuarios = [];
                 $concursos = [];
 
                 foreach($data as $info){
 
-                    $valorTotal += $info['valor_aposta'];
+                    $valorTotal += floatval(str_replace(',', '.', $info['valor_aposta']));
                     $totalBilhetes += 1;
-                    $totalUsuarios += 1;
 
                     $date = new DateTime($info['created_at']);
+
+                    if(!in_array($info['usuario_id'], $totalUsuarios)){
+                        array_push($totalUsuarios, $info['usuario_id']);
+                    }
 
                     if(!in_array($info['concurso'], $concursos)){
                         array_push($concursos, $info['concurso']);
@@ -75,6 +78,9 @@ class ApostasFeitasController extends Controller
                 }
 
                 $dados['concursos'] = implode(', ', $concursos);
+                $dados['totalUsuarios'] = count($totalUsuarios);
+                $dados['totalBilhetes'] = $totalBilhetes;
+                $dados['valorTotal'] = number_format($valorTotal, 2, ',', '.') ;
 
                 return response()->json(['success' => true, 'data' => $dados], 200);
             }
