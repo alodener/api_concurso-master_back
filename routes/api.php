@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ApostasFeitasController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware('auth')->prefix('apostas-feitas')->group(function () {
+   Route::post('/show', [ApostasFeitasController::class, 'filter']);
 });
 
 Route::middleware('auth')->prefix('users')->group(function () {
@@ -52,5 +57,5 @@ Route::middleware('auth')->prefix('partners')->group(function () {
 
 });
 
-
+Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
