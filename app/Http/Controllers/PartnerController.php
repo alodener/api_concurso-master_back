@@ -169,6 +169,62 @@ class PartnerController extends Controller
 
     }
 
+    public function Financial(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $data_partner = Partner::findOrFail($data['partner']);
+    
+            // Consulta para transact_balance
+            $transactBalances = DB::connection($data_partner['connection'])
+                ->table('transact_balance')
+                ->select('type', DB::raw('SUM(value) as total_value'))
+                ->whereDate('created_at', '=', $data['number']) 
+                ->groupBy('type')
+                ->get();
+    
+            // Inicializa um array para armazenar os resultados agrupados
+            $groupedBalances = [
+                'dep_pix' => 0,
+                'recarga_manual' => 0,
+                'pag_premios' => 0,
+                'pag_bonus' => 0,
+                'Outros' => 0
+            ];
+    
+            // Itera sobre os resultados da consulta
+            foreach ($transactBalances as $balance) {
+                // Extrai o tipo e o valor total do saldo
+                $type = $balance->type;
+                $total_value = $balance->total_value;
+    
+                // Remove os acentos e caracteres especiais do tipo para uniformizar
+                $type = preg_replace('/[^a-zA-Z0-9]/', ' ', $type);
+    
+                // Verifica se a categoria já existe no array agrupado
+                if (strpos($type, 'Recarga efetuada por meio da plataforma') !== false) {
+                    $groupedBalances['dep_pix'] += $total_value;
+                } elseif (strpos($type, 'Add por Admin') !== false) {
+                    $groupedBalances['recarga_manual'] += $total_value;
+                } elseif (strpos($type, 'Saldo recebido a partir de Saque Disponível.') !== false) {
+                    $groupedBalances['pag_premios'] += $total_value;
+                } elseif (strpos($type, 'Saldo recebido a partir de Bônus.') !== false) {
+                    $groupedBalances['pag_bonus'] += $total_value;
+                } else {
+                    // Se não corresponder a nenhuma categoria específica, adicione o valor total a 'Outros'
+                    $groupedBalances['Outros'] += $total_value;
+                }
+            }
+    
+            // Retorna o array agrupado
+            return [$groupedBalances];
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+    
+    
+    
     public function getResultInMultiplePartners(Request $request)
     {
         try {
