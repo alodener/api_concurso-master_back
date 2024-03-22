@@ -172,17 +172,9 @@ class PartnerController extends Controller
     public function Financial(Request $request)
     {
         try {
-            $data = $request->all();
-            $data_partner = Partner::findOrFail($data['partner']);
-    
-            // Consulta para transact_balance
-            $transactBalances = DB::connection($data_partner['connection'])
-                ->table('transact_balance')
-                ->select('type', DB::raw('SUM(value) as total_value'))
-                ->whereDate('created_at', '=', $data['number']) 
-                ->groupBy('type')
-                ->get();
-    
+            // Obtém todas as partners do banco de dados
+            $partners = Partner::all();
+
             // Inicializa um array para armazenar os resultados agrupados
             $groupedBalances = [
                 'dep_pix' => 0,
@@ -191,39 +183,89 @@ class PartnerController extends Controller
                 'pag_bonus' => 0,
                 'Outros' => 0
             ];
-    
-            // Itera sobre os resultados da consulta
-            foreach ($transactBalances as $balance) {
-                // Extrai o tipo e o valor total do saldo
-                $type = $balance->type;
-                $total_value = $balance->total_value;
-    
-                // Remove os acentos e caracteres especiais do tipo para uniformizar
-                $type = preg_replace('/[^a-zA-Z0-9]/', ' ', $type);
-    
-                // Verifica se a categoria já existe no array agrupado
-                if (strpos($type, 'Recarga efetuada por meio da plataforma') !== false) {
-                    $groupedBalances['dep_pix'] += $total_value;
-                } elseif (strpos($type, 'Add por Admin') !== false) {
-                    $groupedBalances['recarga_manual'] += $total_value;
-                } elseif (strpos($type, 'Saldo recebido a partir de Saque Disponível.') !== false) {
-                    $groupedBalances['pag_premios'] += $total_value;
-                } elseif (strpos($type, 'Saldo recebido a partir de Bônus.') !== false) {
-                    $groupedBalances['pag_bonus'] += $total_value;
-                } else {
-                    // Se não corresponder a nenhuma categoria específica, adicione o valor total a 'Outros'
-                    $groupedBalances['Outros'] += $total_value;
+
+            // Itera sobre todas as partners
+            foreach ($partners as $partner) {
+                // Obtém os dados da requisição
+                $data = $request->all();
+                // Define a conexão com base na partner atual
+                $connection = $partner->connection;
+
+                // Consulta para transact_balance
+                $transactBalances = DB::connection($connection)
+                    ->table('transact_balance')
+                    ->select('type', DB::raw('SUM(value) as total_value'))
+                    ->whereDate('created_at', '=', $data['number'])
+                    ->groupBy('type')
+                    ->get();
+
+                // Itera sobre os resultados da consulta
+                foreach ($transactBalances as $balance) {
+                    // Extrai o tipo e o valor total do saldo
+                    $type = $balance->type;
+                    $total_value = $balance->total_value;
+
+                    // Remove os acentos e caracteres especiais do tipo para uniformizar
+                    $type = preg_replace('/[^a-zA-Z0-9]/', ' ', $type);
+
+                    // Verifica se a categoria corresponde e adiciona ao array agrupado
+                    if (strpos($type, 'Recarga efetuada por meio da plataforma') !== false) {
+                        $groupedBalances['dep_pix'] += $total_value;
+                    } elseif (strpos($type, 'Add por Admin') !== false) {
+                        $groupedBalances['recarga_manual'] += $total_value;
+                    } elseif (strpos($type, 'Saldo recebido a partir de Saque Disponível.') !== false) {
+                        $groupedBalances['pag_premios'] += $total_value;
+                    } elseif (strpos($type, 'Saldo recebido a partir de Bônus.') !== false) {
+                        $groupedBalances['pag_bonus'] += $total_value;
+                    } else {
+                        // Se não corresponder a nenhuma categoria específica, adicione o valor total a 'Outros'
+                        $groupedBalances['Outros'] += $total_value;
+                    }
                 }
             }
-    
+
             // Retorna o array agrupado
             return [$groupedBalances];
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+
+    
+    public function getResultsBichao(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $data_partner = Partner::findOrFail($data['partner']);
+            $connection = $data_partner->connection;
+    
+            // Consulta para buscar as informações na tabela bichao_games_vencedores
+            $bichao_games_vencedores = DB::connection($connection)
+                ->table('bichao_games_vencedores')
+                ->select(
+                    'bichao_games_vencedores.game_id',
+                    'bichao_games_vencedores.valor_premio',
+                    'bichao_games.game_1',
+                    'bichao_horarios.banca',
+                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client_full_name"), // Concatenação do name e last_name
+                    'bichao_modalidades.nome as modalidade_name'
+                )
+                ->leftJoin('bichao_games', 'bichao_games_vencedores.game_id', '=', 'bichao_games.id')
+                ->leftJoin('clients', 'bichao_games.client_id', '=', 'clients.id')
+                ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
+                ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
+                ->whereDate('bichao_games_vencedores.updated_at', '=', $data['number'])
+                ->get();
+    
+            return $bichao_games_vencedores;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
     
     
+    
+
     
     public function getResultInMultiplePartners(Request $request)
     {
