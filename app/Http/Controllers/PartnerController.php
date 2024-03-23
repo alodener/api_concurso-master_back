@@ -174,23 +174,28 @@ class PartnerController extends Controller
         try {
             // Obtém todas as partners do banco de dados
             $partners = Partner::all();
-
-            // Inicializa um array para armazenar os resultados agrupados
-            $groupedBalances = [
-                'dep_pix' => 0,
-                'recarga_manual' => 0,
-                'pag_premios' => 0,
-                'pag_bonus' => 0,
-                'Outros' => 0
-            ];
-
+    
+            // Inicializa um array para armazenar os resultados agrupados por parceiro
+            $groupedBalances = [];
+    
             // Itera sobre todas as partners
             foreach ($partners as $partner) {
+                // Inicializa o array de saldo agrupado para este parceiro
+                $partnerBalances = [
+                    'banca' => $partner->name,
+                    'dep_pix' => 0,
+                    'recarga_manual' => 0,
+                    'pag_premios' => 0,
+                    'pag_bonus' => 0,
+                    'Outros' => 0,
+                    'valor_liquido' => 0 // inicializa o valor líquido
+                ];
+    
                 // Obtém os dados da requisição
                 $data = $request->all();
                 // Define a conexão com base na partner atual
                 $connection = $partner->connection;
-
+    
                 // Consulta para transact_balance
                 $transactBalances = DB::connection($connection)
                     ->table('transact_balance')
@@ -198,38 +203,57 @@ class PartnerController extends Controller
                     ->whereDate('created_at', '=', $data['number'])
                     ->groupBy('type')
                     ->get();
-
+    
                 // Itera sobre os resultados da consulta
                 foreach ($transactBalances as $balance) {
                     // Extrai o tipo e o valor total do saldo
                     $type = $balance->type;
                     $total_value = $balance->total_value;
-
+    
                     // Remove os acentos e caracteres especiais do tipo para uniformizar
                     $type = preg_replace('/[^a-zA-Z0-9]/', ' ', $type);
-
-                    // Verifica se a categoria corresponde e adiciona ao array agrupado
+    
+                    // Verifica e acumula os valores correspondentes
                     if (strpos($type, 'Recarga efetuada por meio da plataforma') !== false) {
-                        $groupedBalances['dep_pix'] += $total_value;
+                        $partnerBalances['dep_pix'] += $total_value;
                     } elseif (strpos($type, 'Add por Admin') !== false) {
-                        $groupedBalances['recarga_manual'] += $total_value;
+                        $partnerBalances['recarga_manual'] += $total_value;
                     } elseif (strpos($type, 'Saldo recebido a partir de Saque Disponível.') !== false) {
-                        $groupedBalances['pag_premios'] += $total_value;
+                        $partnerBalances['pag_premios'] += $total_value;
                     } elseif (strpos($type, 'Saldo recebido a partir de Bônus.') !== false) {
-                        $groupedBalances['pag_bonus'] += $total_value;
+                        $partnerBalances['pag_bonus'] += $total_value;
                     } else {
                         // Se não corresponder a nenhuma categoria específica, adicione o valor total a 'Outros'
-                        $groupedBalances['Outros'] += $total_value;
+                        $partnerBalances['Outros'] += $total_value;
                     }
                 }
+    
+                // Calcula o valor líquido
+                $valor_liquido = $partnerBalances['dep_pix'] + $partnerBalances['recarga_manual'] - $partnerBalances['pag_premios'] - $partnerBalances['pag_bonus'];
+    
+                // Formata o valor líquido para duas casas decimais e com a máscara BRL
+                $partnerBalances['valor_liquido'] = 'R$ ' . number_format($valor_liquido, 2, ',', '.');
+    
+                // Formata os demais campos financeiros para duas casas decimais e com a máscara BRL
+                $partnerBalances['dep_pix'] = 'R$ ' . number_format($partnerBalances['dep_pix'], 2, ',', '.');
+                $partnerBalances['recarga_manual'] = 'R$ ' . number_format($partnerBalances['recarga_manual'], 2, ',', '.');
+                $partnerBalances['pag_premios'] = 'R$ ' . number_format($partnerBalances['pag_premios'], 2, ',', '.');
+                $partnerBalances['pag_bonus'] = 'R$ ' . number_format($partnerBalances['pag_bonus'], 2, ',', '.');
+                $partnerBalances['Outros'] = 'R$ ' . number_format($partnerBalances['Outros'], 2, ',', '.');
+    
+                // Adiciona o saldo agrupado para este parceiro ao array principal
+                $groupedBalances[] = $partnerBalances;
             }
-
-            // Retorna o array agrupado
-            return [$groupedBalances];
+    
+            // Retorna o array agrupado por parceiro
+            return $groupedBalances;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
+    
+    
+    
 
     
     public function getResultsBichao(Request $request)
