@@ -191,6 +191,13 @@ class PartnerController extends Controller
                     'valor_liquido' => 0 // inicializa o valor líquido
                 ];
     
+
+                // Chama a função getResultInMultiplePartnersTotal passando os valores necessários
+                $totalPrizeAmount = $this->getResultInMultiplePartners2($request, $partner->id);
+    
+                // Armazena o valor total dos prêmios na chave 'pag_premios' do array de saldo agrupado
+                $partnerBalances['pag_premios'] =  $totalPrizeAmount;
+    
                 // Obtém os dados da requisição
                 $data = $request->all();
                 // Define a conexão com base na partner atual
@@ -237,7 +244,6 @@ class PartnerController extends Controller
                 // Formata os demais campos financeiros para duas casas decimais e com a máscara BRL
                 $partnerBalances['dep_pix'] = 'R$ ' . number_format($partnerBalances['dep_pix'], 2, ',', '.');
                 $partnerBalances['recarga_manual'] = 'R$ ' . number_format($partnerBalances['recarga_manual'], 2, ',', '.');
-                $partnerBalances['pag_premios'] = 'R$ ' . number_format($partnerBalances['pag_premios'], 2, ',', '.');
                 $partnerBalances['pag_bonus'] = 'R$ ' . number_format($partnerBalances['pag_bonus'], 2, ',', '.');
                 $partnerBalances['Outros'] = 'R$ ' . number_format($partnerBalances['Outros'], 2, ',', '.');
     
@@ -251,6 +257,49 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+    
+
+        
+    public function getResultInMultiplePartners2(Request $request, $partner)
+    {
+        try {
+            $data = $request->all();
+            $totalPrizeAmount = 0; // Inicializa o valor total como zero
+            $data_partner = Partner::findOrFail($partner);
+    
+            // Ajuste para pesquisa por data
+            $concurses = DB::connection($data_partner['connection'])
+                ->table('competitions')
+                ->whereDate('sort_date', '=', $data['number'])
+                ->pluck('id');
+    
+            $draws = DB::connection($data_partner['connection'])
+                ->table('draws')
+                ->whereIn('competition_id', $concurses)
+                ->get();
+    
+            foreach ($draws as $draw) {
+                if ($draw != null) {
+                    $drawGames = DB::connection($data_partner['connection'])
+                        ->table('games')
+                        ->select('premio')
+                        ->where('checked', 1)
+                        ->whereIn('id', explode(',', $draw->games))
+                        ->get();
+    
+                    foreach ($drawGames as $game) {
+                        $totalPrizeAmount += $game->premio; // Acumula o valor do prêmio
+                    }
+                }
+            }
+    
+            return $totalPrizeAmount; // Retorna o valor total somado
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+    
+    
     
     
     
