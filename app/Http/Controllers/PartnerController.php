@@ -192,7 +192,6 @@ class PartnerController extends Controller
                 ];
     
 
-                // Chama a função getResultInMultiplePartnersTotal passando os valores necessários
                 $totalPrizeAmount = $this->getResultInMultiplePartners2($request, $partner->id);
     
                 // Armazena o valor total dos prêmios na chave 'pag_premios' do array de saldo agrupado
@@ -311,7 +310,6 @@ class PartnerController extends Controller
             $data = $request->all();
             $data_partner = Partner::findOrFail($data['partner']);
             $connection = $data_partner->connection;
-    
             // Consulta para buscar as informações na tabela bichao_games_vencedores
             $bichao_games_vencedores = DB::connection($connection)
                 ->table('bichao_games_vencedores')
@@ -319,6 +317,7 @@ class PartnerController extends Controller
                     'bichao_games_vencedores.game_id',
                     'bichao_games_vencedores.valor_premio',
                     'bichao_games.game_1',
+                    'bichao_games_vencedores.status',
                     'bichao_horarios.banca',
                     DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client_full_name"), // Concatenação do name e last_name
                     'bichao_modalidades.nome as modalidade_name'
@@ -327,7 +326,7 @@ class PartnerController extends Controller
                 ->leftJoin('clients', 'bichao_games.client_id', '=', 'clients.id')
                 ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
                 ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
-                ->whereDate('bichao_games_vencedores.updated_at', '=', $data['number'])
+                ->whereDate('bichao_games_vencedores.updated_at', '=', $data['date'])
                 ->get();
     
             return $bichao_games_vencedores;
@@ -534,6 +533,57 @@ class PartnerController extends Controller
     {
         return $value >= 1000 ? 'R$ ' . number_format($value, 2, ',', '.') : 'R$ ' . number_format($value, 2, ',', '.');
     }
+
+    public function updateStatusBichao(Request $request) {
+        $data = $request->all();
+        $data_partner = Partner::findOrFail($data['partner']);
+        
+        $total_premio = 0;
+        $client_id = null;
+        
+        foreach ($data['ids'] as $id) {
+            $data_game_winner = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->first();
+
+            if($data['status'] == 2) {
+                // Obtém o game_id da tabela de vencedores
+
+                // Agora, busca os detalhes do jogo na tabela 'bichao_games' usando o game_id
+                $data_game = DB::connection($data_partner['connection'])->table('bichao_games')->where('id', $data_game_winner->game_id)->first();
+                
+                if($data_game) {
+                    $total_premio += floatval($data_game_winner->valor_premio);
+                    $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
+                }
+            }
+            
+            // Atualiza o status do jogo vencedor
+            $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => 2]);
+        }
+        
+        if($total_premio > 0 && $client_id) {
+            // Busca os detalhes do cliente na tabela 'clients' usando o client_id
+            $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
+            if($client_data) {
+                // Se o cliente for encontrado, busca os dados do usuário associado ao cliente usando o email
+                $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
+                if($user_data) {
+                    // Atualiza o saldo disponível do usuário somando o total dos prêmios
+                    $new_value = $total_premio + floatval($user_data->available_withdraw);
+                    // $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                } else {
+                    // Atualiza o usuário padrão se o usuário específico não for encontrado
+                    $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                    if($user_data_default) {
+                        // Atualiza o saldo disponível do usuário padrão somando o total dos prêmios
+                        $new_value = $total_premio + floatval($user_data_default->available_withdraw);
+                    }
+                }
+            }
+        }
+        
+        return response()->json(["message" => "Alteração finalizada com sucesso!"], 200);
+    }
+    
 
 
 
