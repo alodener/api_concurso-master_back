@@ -171,12 +171,19 @@ class PartnerController extends Controller
 
     public function Financial(Request $request)
     {
+        set_time_limit(1200);
         try {
             // Obtém todas as partners do banco de dados
             $partners = Partner::all();
     
             // Inicializa um array para armazenar os resultados agrupados por parceiro
             $groupedBalances = [];
+            $totalPix = 0;
+            $totalRecargaManual = 0;
+            $totalPagPremios = 0;
+            $totalPagBonus = 0;
+            $totalValorLiquido = 0;
+
     
             // Itera sobre todas as partners
             foreach ($partners as $partner) {
@@ -188,7 +195,13 @@ class PartnerController extends Controller
                     'pag_premios' => 0,
                     'pag_bonus' => 0,
                     'Outros' => 0,
-                    'valor_liquido' => 0 // inicializa o valor líquido
+                    'valor_liquido' => 0, 
+                    'totalPix' => 0,
+                    'totalRecargaManual' => 0,
+                    'totalPagPremios' => 0,
+                    'totalPagBonus' => 0,
+                    'totalValorLiquido' => 0,
+
                 ];
     
 
@@ -236,16 +249,43 @@ class PartnerController extends Controller
     
                 // Calcula o valor líquido
                 $valor_liquido = $partnerBalances['dep_pix'] + $partnerBalances['recarga_manual'] - $partnerBalances['pag_premios'] - $partnerBalances['pag_bonus'];
-    
-                // Formata o valor líquido para duas casas decimais e com a máscara BRL
-                $partnerBalances['valor_liquido'] = 'R$ ' . number_format($valor_liquido, 2, ',', '.');
-    
-                // Formata os demais campos financeiros para duas casas decimais e com a máscara BRL
+                
+                // Adiciona os totais e formata os demais campos financeiros
+                $totalPix = $totalPix + $partnerBalances['dep_pix'];
                 $partnerBalances['dep_pix'] = 'R$ ' . number_format($partnerBalances['dep_pix'], 2, ',', '.');
+                $partnerBalances['totalPix'] = 'R$ ' . number_format($totalPix, 2, ',', '.');
+
+                $totalRecargaManual = $totalRecargaManual + $partnerBalances['recarga_manual'];
                 $partnerBalances['recarga_manual'] = 'R$ ' . number_format($partnerBalances['recarga_manual'], 2, ',', '.');
+                $partnerBalances['totalRecargaManual'] = 'R$ ' . number_format($totalRecargaManual, 2, ',', '.');
+
+                $totalPagPremios = $totalPagPremios + $partnerBalances['pag_premios'];
+                $partnerBalances['pag_premios'] = 'R$ ' . number_format($partnerBalances['pag_premios'], 2, ',', '.');
+                $partnerBalances['totalPagPremios'] = 'R$ ' . number_format($totalPagPremios, 2, ',', '.');
+
+                $totalPagBonus = $totalPagBonus + $partnerBalances['pag_bonus'];
                 $partnerBalances['pag_bonus'] = 'R$ ' . number_format($partnerBalances['pag_bonus'], 2, ',', '.');
-                $partnerBalances['Outros'] = 'R$ ' . number_format($partnerBalances['Outros'], 2, ',', '.');
-    
+                $partnerBalances['totalPagBonus'] = 'R$ ' . number_format($totalPagBonus, 2, ',', '.');
+
+                // Formata o valor líquido
+                $partnerBalances['valor_liquido'] = 'R$ ' . number_format($valor_liquido, 2, ',', '.');
+
+                // Calcula o valor líquido total
+                $totalValorLiquido = $totalPix + $totalRecargaManual - $totalPagPremios - $totalPagBonus;
+                $partnerBalances['totalValorLiquido'] = 'R$ ' . number_format($totalValorLiquido, 2, ',', '.');
+
+
+
+                // // Formata os demais campos financeiros para duas casas decimais e com a máscara BRL
+                // $partnerBalances['dep_pix'] = 'R$ ' . number_format($partnerBalances['dep_pix'], 2, ',', '.');
+                // $partnerBalances['recarga_manual'] = 'R$ ' . number_format($partnerBalances['recarga_manual'], 2, ',', '.');
+                // $partnerBalances['pag_bonus'] = 'R$ ' . number_format($partnerBalances['pag_bonus'], 2, ',', '.');
+                // $partnerBalances['pag_premios'] = 'R$ ' . number_format($partnerBalances['pag_premios'], 2, ',', '.');
+                // $partnerBalances['Outros'] = 'R$ ' . number_format($partnerBalances['Outros'], 2, ',', '.');
+                // $partnerBalances['valor_liquido'] = 'R$ ' . number_format($valor_liquido, 2, ',', '.');
+
+                
+
                 // Adiciona o saldo agrupado para este parceiro ao array principal
                 $groupedBalances[] = $partnerBalances;
             }
