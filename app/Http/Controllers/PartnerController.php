@@ -175,6 +175,7 @@ class PartnerController extends Controller
         try {
             // Obtém todas as partners do banco de dados
             $partners = Partner::all();
+            // $partners = Partner::take(5)->get();
     
             // Inicializa um array para armazenar os resultados agrupados por parceiro
             $groupedBalances = [];
@@ -350,12 +351,13 @@ class PartnerController extends Controller
             $data = $request->all();
             $data_partner = Partner::findOrFail($data['partner']);
             $connection = $data_partner->connection;
+    
             // Consulta para buscar as informações na tabela bichao_games_vencedores
             $bichao_games_vencedores = DB::connection($connection)
                 ->table('bichao_games_vencedores')
                 ->select(
                     'bichao_games_vencedores.game_id',
-                    'bichao_games_vencedores.valor_premio',
+                    DB::raw("CONCAT('R$ ', REPLACE(FORMAT(bichao_games_vencedores.valor_premio, 2), '.', ',')) as valor_premio"), // Formatação do valor_premio
                     'bichao_games.game_1',
                     'bichao_games_vencedores.status',
                     'bichao_horarios.banca',
@@ -374,6 +376,142 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+
+    public function generateRandomGame($modalidade)
+    {
+        $modalidadesValidas = [
+            'milhar', 'centena', 'dezena', 'grupo', 'milhar/centena',
+            'terno de dezena', 'terno de grupos', 'duque de dezena',
+            'duque de grupo', 'quadra de grupos', 'quina de grupos', 'unidade'
+        ];
+    
+        // Converter a modalidade fornecida para minúsculas para garantir compatibilidade
+        $modalidade = strtolower($modalidade);
+    
+        // Verificar se a modalidade fornecida está presente no array de modalidades válidas
+        if (in_array($modalidade, $modalidadesValidas)) {
+            $game = $this->generateRandomGameForModalidade($modalidade);
+            return $game;
+        } else {
+            return response()->json(['error' => 'Modalidade não encontrada']);
+        }
+    }
+    
+    private function generateRandomGameForModalidade($modalidade)
+    {
+        switch ($modalidade) {
+            case 'milhar':
+                return rand(0, 9) . rand(0, 9) . rand(0, 9) . rand(0, 9);
+            case 'centena':
+                return rand(0, 9) . rand(0, 9) . rand(0, 9);
+            case 'dezena':
+                return rand(0, 9) . rand(0, 9);
+            case 'grupo':
+                return rand(1, 25);
+            case 'milhar/centena':
+                return rand(0, 9) . rand(0, 9) . rand(0, 9) . '/' . rand(0, 9) . rand(0, 9) . rand(0, 9);
+            case 'terno de dezena':
+                $dezenas = [];
+                while (count($dezenas) < 3) {
+                    $dezena = rand(0, 9) . rand(0, 9);
+                    if (!in_array($dezena, $dezenas)) {
+                        $dezenas[] = $dezena;
+                    }
+                }
+                return implode(', ', $dezenas);
+            case 'terno de grupos':
+                $grupos = [];
+                while (count($grupos) < 3) {
+                    $grupo = rand(1, 25);
+                    if (!in_array($grupo, $grupos)) {
+                        $grupos[] = $grupo;
+                    }
+                }
+                return implode(', ', $grupos);
+            case 'duque de dezena':
+                return rand(0, 9) . rand(0, 9) . '/' . rand(0, 9) . rand(0, 9);
+            case 'duque de grupo':
+                return rand(1, 25) . '/' . rand(1, 25);
+            case 'quadra de grupos':
+                $grupos = [];
+                while (count($grupos) < 4) {
+                    $grupo = rand(1, 25);
+                    if (!in_array($grupo, $grupos)) {
+                        $grupos[] = $grupo;
+                    }
+                }
+                return implode(', ', $grupos);
+            case 'quina de grupos':
+                $grupos = [];
+                while (count($grupos) < 5) {
+                    $grupo = rand(1, 25);
+                    if (!in_array($grupo, $grupos)) {
+                        $grupos[] = $grupo;
+                    }
+                }
+                return implode(', ', $grupos);
+            case 'unidade':
+                return rand(0, 9);
+            default:
+                return null; // Caso a modalidade não seja reconhecida
+        }
+    }
+    
+    
+    public function distributePrizesBichao(Request $request)
+    {
+        try {
+            // Parâmetros extras
+            $data = $request->all();
+    
+            $totalPrize = $data['premio']; 
+            $totalWinners = $data['ganhadores']; 
+
+            // Chama a função getResultsBichao para obter os resultados originais
+            $originalResults = $this->getResultsBichao($request);
+    
+            // Array de modalidades e bancas
+            $modalidades = ['Milhar', 'Centena', 'Dezena', 'Grupo', 'Milhar/Centena', 'Terno de Dezena', 'Terno de Grupos', 'Duque de Dezena', 'Duque de Grupo', 'Quadra de Grupos', 'Quina de Grupos', 'Unidade'];
+            $bancas = ['PTM-RIO', 'PT-RIO', 'PTV-RIO', 'PTN-RIO', 'CORUJA-RIO', 'PT-SP', 'BANDEIRANTES', 'PTN-SP', 'LOOK', 'ALVORADA', 'MINAS-DIA', 'MINAS-NOITE', 'BA', 'LOTEP', 'LBR', 'LOTECE', 'FEDERAL'];
+    
+            // Array para armazenar os resultados combinados
+            $combinedResults = [];
+    
+            // Seleciona uma quantidade aleatória de pessoas
+            $randomPeople = People::inRandomOrder()->limit($totalWinners)->get();
+    
+            // Distribui o prêmio para cada ganhador
+            foreach ($randomPeople as $person) {
+                // Modalidade aleatória
+                $modalidade = $modalidades[array_rand($modalidades)];
+    
+                // Banca aleatória
+                $banca = $bancas[array_rand($bancas)];
+    
+                // Adiciona o ganhador e o prêmio ao array de resultados
+                $combinedResults[] = [
+                    'game_id' => mt_rand(10000, 99999), // Gera um número aleatório de 6 dígitos
+                    'valor_premio' => 'R$ ' . number_format($totalPrize / $totalWinners, 2, ',', '.'), 
+                    'game_1' => $this->generateRandomGame($modalidade), 
+                    'status' => 2, 
+                    'banca' => $banca, // Banca aleatória
+                    'client_full_name' => $person->first_name . ' ' . $person->last_name,
+                    'modalidade_name' => $modalidade,
+                ];
+            }
+    
+            // Mescla os resultados originais com os novos resultados
+            $mergedResults = array_merge($originalResults->toArray(), $combinedResults);
+    
+            return $mergedResults;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+    
+    
+
+    
     
     
     
