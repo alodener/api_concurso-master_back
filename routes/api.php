@@ -64,4 +64,3 @@ Route::middleware('auth')->prefix('partners')->group(function () {
 
 Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
-Route::get('/pdf', [PartnerController::class, 'gerarPDF']);
