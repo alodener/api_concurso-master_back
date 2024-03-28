@@ -56,6 +56,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/bichao-results', [PartnerController::class, 'getResultsBichao']);
     Route::get('/get-result2-bichao', [PartnerController::class, 'distributePrizesBichao']);
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
+    Route::post('/pdf', [PartnerController::class, 'gerarPDF']);
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
 
@@ -63,3 +64,4 @@ Route::middleware('auth')->prefix('partners')->group(function () {
 
 Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
+Route::get('/pdf', [PartnerController::class, 'gerarPDF']);

@@ -6,6 +6,7 @@ use App\Http\Requests\CreateGameInMultiplePartnersRequest;
 use App\Models\Log;
 use App\Models\Partner;
 use Carbon\Carbon;
+use PDF;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,38 @@ class PartnerController extends Controller
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
+    }
+
+    public function gerarPDF(Request $request)
+    {
+
+        // Obter os dados do corpo da solicitação
+        $requestData = $request->all();
+
+        // return $requestData;
+        // Dados que serão passados para a visualização do PDF
+        $date = Carbon::createFromFormat('Y-m-d', $requestData['date'])->format('d/m/Y');
+
+        $data = [
+            'title' => 'Relatório Financeiro: ' . $date, // Título com a data formatada
+            'totalValorLiquido' => $requestData['totalValorLiquido'],
+            'totalPagBonus' => $requestData['totalPagBonus'],
+            'totalPagPremios' => $requestData['totalPagPremios'],
+            'totalPix' => $requestData['totalPix'],
+            'totalRecargaManual' => $requestData['totalRecargaManual'],
+            'winners' => $requestData['winners'], // Lista de ganhadores
+        ];
+
+
+        // return $data;
+    
+        // Carregar a visualização do PDF com os dados
+        $pdf = PDF::loadView('pdf.exemplo', $data);
+
+        // Definir o nome do arquivo e o tipo de conteúdo
+    
+        // Fazer o download do PDF
+        return $pdf->download('relatorio_financeiro.pdf');
     }
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
@@ -359,7 +392,7 @@ class PartnerController extends Controller
                     'bichao_games_vencedores.game_id',
                     DB::raw("CONCAT('R$ ', REPLACE(FORMAT(bichao_games_vencedores.valor_premio, 2), '.', ',')) as valor_premio"), // Formatação do valor_premio
                     'bichao_games.game_1',
-                    'bichao_games_vencedores.status',
+                    // 'bichao_games_vencedores.status',
                     'bichao_horarios.banca',
                     DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client_full_name"), // Concatenação do name e last_name
                     'bichao_modalidades.nome as modalidade_name'
@@ -1144,7 +1177,6 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
-    
-    
+
 
 }
