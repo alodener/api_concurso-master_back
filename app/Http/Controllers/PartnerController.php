@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Stmt\Return_;
 use App\Models\People;
+use App\Models\WinnersList;
+
 
 
 class PartnerController extends Controller
@@ -58,6 +60,56 @@ class PartnerController extends Controller
     
         // Fazer o download do PDF
         return $pdf->download('relatorio_financeiro.pdf');
+    }
+
+    public function storeListWinners(Request $request)
+    {
+        try {
+            // Recupera todos os dados do request
+            $requestData = $request->all();
+    
+            $winnersJson = json_encode($requestData['winners2']);
+
+            // Cria um novo registro utilizando o model WinnersList
+            $winnersList = WinnersList::create([
+                'banca_id' => $requestData['banca_id'],
+                'fake_winners' => $requestData['fakes'] ?? 0,
+                'fake_premio' => $requestData['premio'] ?? 0,
+                'sort_date' => $request['sort_date'],
+                'json' => $winnersJson
+            ]);
+    
+            // Definimos os campos 'created_at' e 'updated_at' manualmente
+            $winnersList->created_at = now();
+            $winnersList->updated_at = now();
+            $winnersList->save();
+    
+            // Retorna uma resposta HTTP 200 OK com os dados do novo registro
+            return response()->json($winnersList, 200);
+        } catch (\Exception $e) {
+            // Retorna uma resposta HTTP 500 Internal Server Error caso ocorra um erro
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getWinnersListByBancaAndDate(Request $request)
+    {
+        try {
+            // Recupera o banca_id e a data da requisição
+            $bancaId = $request->input('partner');
+            $createdAt = $request->input('date');
+
+            // Busca os registros na tabela winners_lists com base no banca_id e created_at
+            $winnersList = WinnersList::where('banca_id', $bancaId)
+                ->whereDate('sort_date', $createdAt)
+                ->get();
+
+            // Retorna os registros encontrados
+            return response()->json(['winners_list' => $winnersList], 200);
+        } catch (\Exception $e) {
+            // Retorna uma resposta HTTP 500 Internal Server Error em caso de erro
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {

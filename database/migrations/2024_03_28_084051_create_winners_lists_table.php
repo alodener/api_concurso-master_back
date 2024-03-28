@@ -19,12 +19,14 @@ class CreateWinnersListsTable extends Migration
             $table->json('fake_winners');
             $table->decimal('fake_premio', 10, 2);
             $table->json('json');
+            $table->timestamp('sort_date')->nullable();
             $table->timestamps();
-
+    
             // Definindo a chave estrangeira
             $table->foreign('banca_id')->references('id')->on('partners')->onDelete('cascade');
         });
     }
+    
 
     /**
      * Reverse the migrations.
