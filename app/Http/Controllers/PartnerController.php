@@ -184,20 +184,34 @@ class PartnerController extends Controller
             // Recupera o banca_id e a data da requisição
             $bancaId = $request->input('partner');
             $createdAt = $request->input('sort_date');
-
+    
             // Busca os registros na tabela winners_lists com base no banca_id e created_at
             $winnersList = WinnersList::where('banca_id', $bancaId)
                 ->whereDate('sort_date', $createdAt)
                 ->select('json')
                 ->get();
-
-            // Retorna os registros encontrados
-            return response()->json($winnersList, 200);
+    
+            // Inicializa um array para armazenar os dados formatados
+            $formattedData = [];
+    
+            // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
+            foreach ($winnersList as $record) {
+                $jsonData = json_decode($record->json, true);
+    
+                // Adiciona os dados decodificados ao array formatado
+                foreach ($jsonData as $item) {
+                    $formattedData[] = $item;
+                }
+            }
+    
+            // Retorna os dados formatados como JSON
+            return response()->json($formattedData, 200);
         } catch (\Exception $e) {
             // Retorna uma resposta HTTP 500 Internal Server Error em caso de erro
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
         ini_set('max_execution_time', 180);
