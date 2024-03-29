@@ -117,7 +117,7 @@ class PartnerController extends Controller
             $requestData = $request->all();
     
             // Consulta no banco de dados para obter os dados da tabela 'winners_lists' com base na banca e na data do sorteio
-            $winnersList = WinnersList::where('banca_id', $requestData['banca_id'])
+            $winnersList = WinnersList::where('banca_id', $requestData['partner'])
                                         ->whereDate('sort_date', $requestData['sort_date'])
                                         ->first();
     
@@ -183,15 +183,16 @@ class PartnerController extends Controller
         try {
             // Recupera o banca_id e a data da requisição
             $bancaId = $request->input('partner');
-            $createdAt = $request->input('date');
+            $createdAt = $request->input('sort_date');
 
             // Busca os registros na tabela winners_lists com base no banca_id e created_at
             $winnersList = WinnersList::where('banca_id', $bancaId)
                 ->whereDate('sort_date', $createdAt)
+                ->select('json')
                 ->get();
 
             // Retorna os registros encontrados
-            return response()->json(['winners_list' => $winnersList], 200);
+            return response()->json($winnersList, 200);
         } catch (\Exception $e) {
             // Retorna uma resposta HTTP 500 Internal Server Error em caso de erro
             return response()->json(['error' => $e->getMessage()], 500);
