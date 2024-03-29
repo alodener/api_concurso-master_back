@@ -67,3 +67,4 @@ Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
 
 Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']);
+Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']);

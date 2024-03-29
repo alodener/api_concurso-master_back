@@ -110,8 +110,74 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
 
+    public function formatTableContentFromRequest(Request $request) {
+        try {
+            // Recupera os dados da requisição
+            $requestData = $request->all();
+    
+            // Consulta no banco de dados para obter os dados da tabela 'winners_lists' com base na banca e na data do sorteio
+            $winnersList = WinnersList::where('banca_id', $requestData['banca_id'])
+                                        ->whereDate('sort_date', $requestData['sort_date'])
+                                        ->first();
+    
+            if (!$winnersList) {
+                return response()->json(['error' => 'Nenhum registro encontrado para a banca e data do sorteio especificados'], 404);
+            }
+    
+            // Decodifica o JSON armazenado na coluna 'json' para obter os dados dos ganhadores
+            $winners2 = json_decode($winnersList->json, true);
+    
+            // Inicia as variáveis para cálculo do total de prêmios e bilhetes
+            $totalGeral = 0;
+            $totalTickets = 0;
+            $groupedByGame = [];
+    
+            // Calcula o total geral de prêmios e total de bilhetes, e agrupa os ganhadores pelo nome do jogo
+            foreach ($winners2 as $winner) {
+                $valorNumerico = is_string($winner['premio']) ? floatval(str_replace(['.', ','], ['', '.'], $winner['premio'])) : $winner['premio'];
+                $totalGeral += $valorNumerico;
+                $totalTickets += floatval($winner['num_tickets']);
+    
+                if (!isset($groupedByGame[$winner['game_name']])) {
+                    $groupedByGame[$winner['game_name']] = [];
+                }
+    
+                $groupedByGame[$winner['game_name']][] = $winner;
+            }
+    
+            // Obtém o nome do parceiro selecionado a partir dos dados do registro de winnersList
+            $partnerSelectedName = $winnersList->name;
+    
+            // Inicia a formatação do conteúdo da tabela
+            $formattedContent = "🤑 {$partnerSelectedName} 🤑\n";
+            $formattedContent .= "SORTEIOS DO DIA: {$winners2[0]['sort_date']}\n";
+            $formattedContent .= "PREMIAÇÕES GERAIS: " . number_format($totalGeral, 2, ',', '.') . " 💰\n";
+            $formattedContent .= "TOTAL DE BILHETES: $totalTickets\n";
+    
+            // Percorre os ganhadores agrupados por jogo e adiciona ao conteúdo formatado
+            foreach ($groupedByGame as $gameName => $winners) {
+                $formattedContent .= "\n🟡 $gameName\n";
+                $totalPrizeByGame = 0;
+    
+                foreach ($winners as $winner) {
+                    $formattedContent .= "✔️ {$winner['name']}, {$winner['num_tickets']} cupons\n";
+                    $formattedContent .= "💰 Prêmio: {$winner['premio_formatted']}\n\n";
+                    $valorNumerico = is_string($winner['premio']) ? floatval(str_replace(['.', ','], ['', '.'], $winner['premio'])) : $winner['premio'];
+                    $totalPrizeByGame += $valorNumerico;
+                }
+    
+                $formattedContent .= "Total de Prêmios 💰 " . number_format($totalPrizeByGame, 2, ',', '.') . " 💰\n";
+            }
+    
+            // Retorna a resposta com o conteúdo formatado
+            return response()->json(['formatted_content' => $formattedContent], 200);
+        } catch (\Exception $e) {
+            // Retorna uma resposta HTTP 500 Internal Server Error caso ocorra um erro
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+    
     public function getWinnersListByBancaAndDate(Request $request)
     {
         try {
