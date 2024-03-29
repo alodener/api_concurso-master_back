@@ -68,29 +68,49 @@ class PartnerController extends Controller
             // Recupera todos os dados do request
             $requestData = $request->all();
     
-            $winnersJson = json_encode($requestData['winners2']);
-
-            // Cria um novo registro utilizando o model WinnersList
-            $winnersList = WinnersList::create([
-                'banca_id' => $requestData['banca_id'],
-                'fake_winners' => $requestData['fakes'] ?? 0,
-                'fake_premio' => $requestData['premio'] ?? 0,
-                'sort_date' => $request['sort_date'],
-                'json' => $winnersJson
-            ]);
+            // Verifica se há itens na lista de ganhadores
+            if (isset($requestData['winners2']) && !empty($requestData['winners2'])) {
+                // Converte a lista de ganhadores para JSON
+                $winnersJson = json_encode($requestData['winners2']);
     
-            // Definimos os campos 'created_at' e 'updated_at' manualmente
-            $winnersList->created_at = now();
-            $winnersList->updated_at = now();
-            $winnersList->save();
+                // Verifica se já existe um registro para essa banca e data de sorteio
+                $existingWinnersList = WinnersList::where('banca_id', $requestData['banca_id'])
+                    ->where('sort_date', $request['sort_date'])
+                    ->first();
     
-            // Retorna uma resposta HTTP 200 OK com os dados do novo registro
-            return response()->json($winnersList, 200);
+                if ($existingWinnersList) {
+                    // Atualiza o registro existente com os novos dados
+                    $existingWinnersList->update([
+                        'fake_winners' => $requestData['fakes'] ?? 0,
+                        'fake_premio' => $requestData['premio'] ?? 0,
+                        'json' => $winnersJson
+                    ]);
+    
+                    // Retorna uma resposta HTTP 200 OK com os dados atualizados
+                    return response()->json($existingWinnersList, 200);
+                } else {
+                    // Cria um novo registro utilizando o model WinnersList
+                    $winnersList = WinnersList::create([
+                        'banca_id' => $requestData['banca_id'],
+                        'fake_winners' => $requestData['fakes'] ?? 0,
+                        'fake_premio' => $requestData['premio'] ?? 0,
+                        'sort_date' => $request['sort_date'],
+                        'json' => $winnersJson
+                    ]);
+    
+                    // Retorna uma resposta HTTP 200 OK com os dados do novo registro
+                    return response()->json($winnersList, 200);
+                }
+            } else {
+                // Retorna uma resposta HTTP 400 Bad Request se não houver itens na lista de ganhadores
+                return response()->json(['error' => 'Lista de ganhadores vazia.'], 400);
+            }
         } catch (\Exception $e) {
             // Retorna uma resposta HTTP 500 Internal Server Error caso ocorra um erro
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    
 
     public function getWinnersListByBancaAndDate(Request $request)
     {
