@@ -746,20 +746,19 @@ class PartnerController extends Controller
     
             // Array para armazenar os resultados combinados
             $combinedResults = [];
-
+    
                 
             // Seleciona uma quantidade aleatória de pessoas
             $randomPeople = People::inRandomOrder()->limit($totalWinners)->get();
     
             // Distribui o prêmio para cada ganhador
             $remainingPrize = $totalPrize;
-            for ($i = 0; $i < $totalWinners; $i++) {
-                // Gerar um valor de prêmio aleatório para cada ganhador
-                if ($i == $totalWinners - 1) {
-                    // Último ganhador recebe o restante do prêmio
+            foreach ($randomPeople as $key => $person) {
+                // Se for o último ganhador, ele recebe o valor restante
+                if ($key == $totalWinners - 1) {
                     $prize = $remainingPrize;
                 } else {
-                    $prize = mt_rand(1, ceil($remainingPrize));
+                    $prize = mt_rand(1, ceil($remainingPrize / ($totalWinners - $key)));
                 }
     
                 $remainingPrize -= $prize; // Atualiza o valor do prêmio restante
@@ -775,7 +774,7 @@ class PartnerController extends Controller
                     'game_1' => $this->generateRandomGame($modalidade), // Modalidade aleatória
                     'status' => 2, 
                     'banca' => $banca, // Banca aleatória
-                    'client_full_name' => 'Ganhador ' . ($i + 1),
+                    'client_full_name' => $person->first_name . ' ' . $person->last_name,
                     'modalidade_name' => $modalidade,
                 ];
             }
@@ -788,6 +787,7 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+    
     
     public function getResultInMultiplePartners(Request $request)
     {
