@@ -677,7 +677,7 @@ class PartnerController extends Controller
     }
     
     
-    public function distributePrizesBichao(Request $request)
+    public function distributePrizesBichao0(Request $request)
     {
         try {
             // Parâmetros extras
@@ -727,14 +727,67 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
-    
-    
 
+    public function distributePrizesBichao(Request $request)
+    {
+        try {
+            // Parâmetros extras
+            $data = $request->all();
     
+            $totalPrize = floatval(str_replace(',', '.', str_replace('.', '', str_replace('R$ ', '', $data['premio']))));
+            $totalWinners = $data['ganhadores'];
     
+            // Chama a função getResultsBichao para obter os resultados originais
+            $originalResults = $this->getResultsBichao($request);
     
+            // Array de modalidades e bancas
+            $modalidades = ['Milhar', 'Centena', 'Dezena', 'Grupo', 'Milhar/Centena', 'Terno de Dezena', 'Terno de Grupos', 'Duque de Dezena', 'Duque de Grupo', 'Quadra de Grupos', 'Quina de Grupos', 'Unidade'];
+            $bancas = ['PTM-RIO', 'PT-RIO', 'PTV-RIO', 'PTN-RIO', 'CORUJA-RIO', 'PT-SP', 'BANDEIRANTES', 'PTN-SP', 'LOOK', 'ALVORADA', 'MINAS-DIA', 'MINAS-NOITE', 'BA', 'LOTEP', 'LBR', 'LOTECE', 'FEDERAL'];
     
+            // Array para armazenar os resultados combinados
+            $combinedResults = [];
 
+                
+            // Seleciona uma quantidade aleatória de pessoas
+            $randomPeople = People::inRandomOrder()->limit($totalWinners)->get();
+    
+            // Distribui o prêmio para cada ganhador
+            $remainingPrize = $totalPrize;
+            for ($i = 0; $i < $totalWinners; $i++) {
+                // Gerar um valor de prêmio aleatório para cada ganhador
+                if ($i == $totalWinners - 1) {
+                    // Último ganhador recebe o restante do prêmio
+                    $prize = $remainingPrize;
+                } else {
+                    $prize = mt_rand(1, ceil($remainingPrize));
+                }
+    
+                $remainingPrize -= $prize; // Atualiza o valor do prêmio restante
+    
+                // Seleciona uma modalidade e banca aleatória
+                $modalidade = $modalidades[array_rand($modalidades)];
+                $banca = $bancas[array_rand($bancas)];
+    
+                // Adiciona o ganhador e o prêmio ao array de resultados
+                $combinedResults[] = [
+                    'game_id' => mt_rand(10000, 99999), // Gera um número aleatório de 6 dígitos
+                    'valor_premio' => 'R$ ' . number_format($prize, 2, ',', '.'), // Formata o valor do prêmio
+                    'game_1' => $this->generateRandomGame($modalidade), // Modalidade aleatória
+                    'status' => 2, 
+                    'banca' => $banca, // Banca aleatória
+                    'client_full_name' => 'Ganhador ' . ($i + 1),
+                    'modalidade_name' => $modalidade,
+                ];
+            }
+    
+            // Mescla os resultados originais com os novos resultados
+            $mergedResults = array_merge($originalResults->toArray(), $combinedResults);
+    
+            return $mergedResults;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
     
     public function getResultInMultiplePartners(Request $request)
     {
