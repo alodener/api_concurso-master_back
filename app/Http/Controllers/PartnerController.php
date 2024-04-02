@@ -516,6 +516,21 @@ class PartnerController extends Controller
 
                 // Adiciona o saldo agrupado para este parceiro ao array principal
                 $groupedBalances[] = $partnerBalances;
+
+                usort($groupedBalances, function($a, $b) {
+                    $valorLiquidoA = $a['valor_liquido'];
+                    $valorLiquidoB = $b['valor_liquido'];
+        
+                    // Remove o prefixo 'R$ ' e converte para float
+                    $valorLiquidoA = floatval(str_replace(['R$ ', ',', '.'], ['', '.', ''], $valorLiquidoA));
+                    $valorLiquidoB = floatval(str_replace(['R$ ', ',', '.'], ['', '.', ''], $valorLiquidoB));
+        
+                    // Ordena de forma decrescente
+                    if ($valorLiquidoA == $valorLiquidoB) {
+                        return 0;
+                    }
+                    return ($valorLiquidoA > $valorLiquidoB) ? -1 : 1;
+                });
             }
     
             // Retorna o array agrupado por parceiro
