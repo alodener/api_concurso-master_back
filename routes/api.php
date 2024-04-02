@@ -58,6 +58,8 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
     Route::post('/pdf', [PartnerController::class, 'gerarPDF']);
     Route::post('/winners-lists', [PartnerController::class, 'storeListWinners']);
+    Route::get('/winners-lists', [PartnerController::class, 'getWinners']);
+
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
 

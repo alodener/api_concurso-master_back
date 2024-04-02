@@ -23,8 +23,19 @@ class PartnerController extends Controller
     public function index() {
         try {
             $partners = Partner::all();
-            return Response($partners, 200);
-            throw new Exception('Não Possui permissão');
+    
+            $allPartnersIds = $partners->pluck('id')->toArray();
+    
+            $allPartners = [
+                'name' => 'Todas as bancas',
+                'id' => $allPartnersIds,
+                'connection' => 'todas_as_bancas',
+            ];
+    
+            $partners->prepend($allPartners);
+    
+            return response()->json($partners, 200);
+    
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
@@ -211,6 +222,27 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function getWinners(Request $request)
+    {
+        // Recuperar os parâmetros da requisição
+        $partnerIds = explode(',', $request->input('partner'));
+        $sort_date = $request->input('number');
+    
+        // Consultar o banco de dados para cada parceiro e mesclar os resultados
+        $winners = [];
+        foreach ($partnerIds as $partner) {
+            $partnerWinners = WinnersList::where('banca_id', $partner)
+                ->whereDate('sort_date', $sort_date)
+                ->get();
+    
+            // Mesclar os resultados no array principal
+            $winners = array_merge($winners, $partnerWinners->toArray());
+        }
+    
+        // Retornar os resultados
+        return response()->json($winners);
+    }    
     
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
@@ -360,7 +392,8 @@ class PartnerController extends Controller
         set_time_limit(1200);
         try {
             // Obtém todas as partners do banco de dados
-            $partners = Partner::all();
+            $partners = Partner::whereNotIn('connection', ['banca1', 'banca2'])->get();
+
             // $partners = Partner::take(5)->get();
     
             // Inicializa um array para armazenar os resultados agrupados por parceiro
