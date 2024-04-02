@@ -391,12 +391,20 @@ class PartnerController extends Controller
     {
         set_time_limit(1200);
         try {
-            // Obtém todas as partners do banco de dados
-            $partners = Partner::whereNotIn('connection', ['banca1', 'banca2'])->get();
+            // Obtém os IDs enviados na requisição
+            $ids = $request->query('ids');
 
-            // $partners = Partner::take(5)->get();
-    
-            // Inicializa um array para armazenar os resultados agrupados por parceiro
+            // Verifica se os IDs foram enviados e se são válidos
+            if ($ids) {
+                // Divide os IDs em um array
+                $idsArray = array_unique(explode(',', $ids));
+                // Obtém todas as partners do banco de dados com base nos IDs fornecidos
+                $partners = Partner::whereIn('id', $idsArray)->whereNotIn('connection', ['banca1', 'banca2'])->get();
+            } else {
+                // Se nenhum ID for enviado, obtém todas as partners do banco de dados
+                $partners = Partner::whereNotIn('connection', ['banca1', 'banca2'])->get();
+            }
+
             $groupedBalances = [];
             $totalPix = 0;
             $totalRecargaManual = 0;
