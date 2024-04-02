@@ -578,7 +578,7 @@ class PartnerController extends Controller
                     'bichao_games_vencedores.game_id',
                     DB::raw("CONCAT('R$ ', REPLACE(FORMAT(bichao_games_vencedores.valor_premio, 2), '.', ',')) as valor_premio"), // Formatação do valor_premio
                     'bichao_games.game_1',
-                    // 'bichao_games_vencedores.status',
+                    'bichao_games_vencedores.status',
                     'bichao_horarios.banca',
                     DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client_full_name"), // Concatenação do name e last_name
                     'bichao_modalidades.nome as modalidade_name'
@@ -943,7 +943,6 @@ class PartnerController extends Controller
 
             if($data['status'] == 2) {
                 // Obtém o game_id da tabela de vencedores
-
                 // Agora, busca os detalhes do jogo na tabela 'bichao_games' usando o game_id
                 $data_game = DB::connection($data_partner['connection'])->table('bichao_games')->where('id', $data_game_winner->game_id)->first();
                 
@@ -954,19 +953,18 @@ class PartnerController extends Controller
             }
             
             // Atualiza o status do jogo vencedor
-            $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => 2]);
+            // $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => 2]);
         }
         
         if($total_premio > 0 && $client_id) {
             // Busca os detalhes do cliente na tabela 'clients' usando o client_id
             $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
             if($client_data) {
-                // Se o cliente for encontrado, busca os dados do usuário associado ao cliente usando o email
                 $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
                 if($user_data) {
                     // Atualiza o saldo disponível do usuário somando o total dos prêmios
                     $new_value = $total_premio + floatval($user_data->available_withdraw);
-                    // $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                    $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
                 } else {
                     // Atualiza o usuário padrão se o usuário específico não for encontrado
                     $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
