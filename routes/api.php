@@ -70,3 +70,5 @@ Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generateP
 
 Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']);
 Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']);
+
+Route::get('/financeiro', [PartnerController::class, 'Financial']);
