@@ -79,6 +79,10 @@ class PartnerController extends Controller
             // Recupera todos os dados do request
             $requestData = $request->all();
     
+            // Atribui zero aos valores de fakes e premio se não estiverem definidos
+            $fakes = $requestData['fakes'] ?? 0;
+            $premio = $requestData['premio'] ?? 0;
+    
             // Verifica se há itens na lista de ganhadores
             if (isset($requestData['winners2']) && !empty($requestData['winners2'])) {
                 // Converte a lista de ganhadores para JSON
@@ -92,8 +96,8 @@ class PartnerController extends Controller
                 if ($existingWinnersList) {
                     // Atualiza o registro existente com os novos dados
                     $existingWinnersList->update([
-                        'fake_winners' => $requestData['fakes'] ?? 0,
-                        'fake_premio' => $requestData['premio'] ?? 0,
+                        'fake_winners' => $fakes,
+                        'fake_premio' => $premio,
                         'json' => $winnersJson
                     ]);
     
@@ -103,8 +107,8 @@ class PartnerController extends Controller
                     // Cria um novo registro utilizando o model WinnersList
                     $winnersList = WinnersList::create([
                         'banca_id' => $requestData['banca_id'],
-                        'fake_winners' => $requestData['fakes'] ?? 0,
-                        'fake_premio' => $requestData['premio'] ?? 0,
+                        'fake_winners' => $fakes,
+                        'fake_premio' => $premio,
                         'sort_date' => $request['sort_date'],
                         'json' => $winnersJson
                     ]);
