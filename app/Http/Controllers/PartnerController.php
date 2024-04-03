@@ -279,7 +279,7 @@ class PartnerController extends Controller
                     foreach ($type_games as $type_game) {
                         $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
                         if(!$has_competition) {
-                             $letras = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+                             $letras = ['A', 'B', 'C', 'D', 'E', 'F'];
                             foreach ($letras as $letra) {
                                 DB::connection($data_partner['connection'])->table('competitions')->insert([
                                 'number' => $data['number'] . $letra,
