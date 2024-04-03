@@ -79,9 +79,9 @@ class PartnerController extends Controller
             // Recupera todos os dados do request
             $requestData = $request->all();
     
-            // Atribui zero aos valores de fakes e premio se não estiverem definidos
-            $fakes = $requestData['fakes'] ?? 0;
-            $premio = $requestData['premio'] ?? 0;
+            // Atribui zero aos valores de fakes e premio se forem null
+            $fakes = $requestData['fakes'] !== null && is_numeric($requestData['fakes']) ? $requestData['fakes'] : 0;
+            $premio = $requestData['premio'] !== null && is_numeric($requestData['premio']) ? $requestData['premio'] : 0;
     
             // Verifica se há itens na lista de ganhadores
             if (isset($requestData['winners2']) && !empty($requestData['winners2'])) {
@@ -93,6 +93,7 @@ class PartnerController extends Controller
                     ->where('sort_date', $request['sort_date'])
                     ->first();
     
+                // Verifica se o registro existe e atualiza, senão, cria um novo
                 if ($existingWinnersList) {
                     // Atualiza o registro existente com os novos dados
                     $existingWinnersList->update([
@@ -125,6 +126,7 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    
 
     public function formatTableContentFromRequest(Request $request) {
         try {
