@@ -58,7 +58,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
     Route::post('/pdf', [PartnerController::class, 'gerarPDF']);
     Route::post('/winners-lists', [PartnerController::class, 'storeListWinners']);
-    Route::get('/winners-lists', [PartnerController::class, 'getWinners']);
+    Route::get('/winners-lists', [PartnerController::class, 'getWinners']);  // Lista das bancas!!
 
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
@@ -68,7 +68,5 @@ Route::middleware('auth')->prefix('partners')->group(function () {
 Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
 
-Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']);
-Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']);
-
-Route::get('/financeiro', [PartnerController::class, 'Financial']);
+Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']); // Traz a lista dos objetos!! Já tenho a função
+Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']); //Traz a lista para conpiar e colar

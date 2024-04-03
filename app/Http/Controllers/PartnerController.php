@@ -227,22 +227,33 @@ class PartnerController extends Controller
     {
         // Recuperar os parâmetros da requisição
         $partnerIds = explode(',', $request->input('partner'));
-        $sort_date = $request->input('number');
-    
+        $sort_date = $request->input('sort_date');
+        
         // Consultar o banco de dados para cada parceiro e mesclar os resultados
         $winners = [];
         foreach ($partnerIds as $partner) {
+            // Recuperar o nome da banca
+            $partnerName = Partner::where('id', $partner)->value('name');
+        
+            // Consultar os vencedores da banca
             $partnerWinners = WinnersList::where('banca_id', $partner)
                 ->whereDate('sort_date', $sort_date)
                 ->get();
-    
+        
             // Mesclar os resultados no array principal
-            $winners = array_merge($winners, $partnerWinners->toArray());
+            foreach ($partnerWinners as $winner) {
+                // Formatando a data para incluir apenas a data (sem hora)
+                $winner->sort_date = date('Y-m-d', strtotime($winner->sort_date));
+                
+                // Adicionar o nome da banca ao resultado
+                $winner->partner_name = $partnerName;
+                $winners[] = $winner;
+            }
         }
-    
+        
         // Retornar os resultados
         return response()->json($winners);
-    }    
+    }
     
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
@@ -512,6 +523,22 @@ class PartnerController extends Controller
     }
     
 
+    public function getByBancaAndDate(Request $request)
+    {
+        $request->validate([
+            'banca_id' => 'required|integer',
+            'sort_date' => 'required|date',
+        ]);
+
+        $bancaId = $request->input('banca_id');
+        $sortDate = $request->input('sort_date');
+
+        $winners = WinnersList::where('banca_id', $bancaId)
+                              ->whereDate('sort_date', $sortDate)
+                              ->get();
+
+        return response()->json($winners);
+    }
         
     public function getResultInMultiplePartners2(Request $request, $partner)
     {
