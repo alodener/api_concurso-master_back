@@ -70,3 +70,5 @@ Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generateP
 
 Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']); // Traz a lista dos objetos!! Já tenho a função
 Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']); //Traz a lista para conpiar e colar
+
+Route::get('/system', [PartnerController::class, 'processarParceiros']); //Traz a lista para conpiar e colar

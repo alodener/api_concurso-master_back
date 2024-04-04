@@ -19,6 +19,30 @@ use App\Models\WinnersList;
 
 class PartnerController extends Controller
 {
+    function processarParceiros() {
+        $bancasAtualizadas = []; // Inicializa o array para armazenar os IDs das bancas atualizadas
+    
+        // Obtém todos os parceiros
+        $parceiros = DB::table('partners')->get();
+    
+        foreach ($parceiros as $parceiro) {
+            // Obtém o ID do parceiro
+            $idParceiro = $parceiro->id;
+            $nameParceiro = $parceiro->name;
+
+    
+            // Insere os registros na tabela System com o partner_id na coluna name_config e o id na coluna value
+            DB::connection($parceiro->connection)->table('system')->insert([
+                ['nome_config' => $nameParceiro, 'value' => $idParceiro, 'created_at' => now(), 'updated_at' => now()]
+                // Você pode adicionar mais campos aqui, se necessário
+            ]);
+    
+            // Adiciona o ID da banca ao array de bancas atualizadas
+            $bancasAtualizadas[] = $idParceiro;
+        }
+    
+        return $bancasAtualizadas; // Retorna o array de bancas atualizadas
+    }    
 
     public function index() {
         try {
@@ -126,7 +150,8 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
+
 
     public function formatTableContentFromRequest(Request $request) {
         try {
