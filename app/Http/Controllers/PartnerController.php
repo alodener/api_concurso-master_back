@@ -26,23 +26,46 @@ class PartnerController extends Controller
         $parceiros = DB::table('partners')->get();
     
         foreach ($parceiros as $parceiro) {
-            // Obtém o ID do parceiro
+            // Obtém o ID e o nome do parceiro
             $idParceiro = $parceiro->id;
             $nameParceiro = $parceiro->name;
-
     
-            // Insere os registros na tabela System com o partner_id na coluna name_config e o id na coluna value
-            DB::connection($parceiro->connection)->table('system')->insert([
-                ['nome_config' => $nameParceiro, 'value' => $idParceiro, 'created_at' => now(), 'updated_at' => now()]
-                // Você pode adicionar mais campos aqui, se necessário
-            ]);
+            // Verifica se já existe um registro para esse partner_id
+            $registroExistente = DB::connection($parceiro->connection)
+                ->table('system')
+                ->where('nome_config', 'partner_id')
+                ->where('value', $idParceiro)
+                ->exists();
     
-            // Adiciona o ID da banca ao array de bancas atualizadas
-            $bancasAtualizadas[] = $idParceiro;
+            // Se não existir um registro para esse partner_id, insere os registros
+            if (!$registroExistente) {
+                DB::connection($parceiro->connection)->table('system')->insert([
+                    ['nome_config' => 'partner_id', 'value' => $idParceiro, 'created_at' => now(), 'updated_at' => now()],
+                    ['nome_config' => 'partner_name', 'value' => $nameParceiro, 'created_at' => now(), 'updated_at' => now()]
+                    // Você pode adicionar mais campos aqui, se necessário
+                ]);
+    
+                // Adiciona o ID da banca ao array de bancas atualizadas
+                $bancasAtualizadas[] = $idParceiro;
+            }
         }
     
         return $bancasAtualizadas; // Retorna o array de bancas atualizadas
-    }    
+    }  
+
+    function deletarRegistrosInseridosHoje() {
+        // Obtém a data atual
+        $hoje = now()->toDateString(); // Obtém a data atual no formato 'YYYY-MM-DD'
+    
+        // Obtém todos os parceiros
+        $parceiros = Partner::all();
+    
+        // Passa por todos os parceiros
+        foreach ($parceiros as $parceiro) {
+            // Deleta os registros da tabela System inseridos hoje para o parceiro atual
+            DB::connection($parceiro->connection)->table('system')->whereDate('created_at', '=', $hoje)->delete();
+        }
+    }
 
     public function index() {
         try {
