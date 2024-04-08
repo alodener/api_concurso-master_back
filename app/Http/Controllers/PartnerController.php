@@ -265,6 +265,16 @@ class PartnerController extends Controller
     
                 // Adiciona os dados decodificados ao array formatado
                 foreach ($jsonData as $item) {
+                    // Verifica se o campo 'premio' é um número ou uma string
+                    if (is_numeric($item['premio'])) {
+                        // Formata o campo 'premio' como uma string formatada em moeda
+                        $item['premio_formatted'] = 'R$ ' . number_format($item['premio'], 2, ',', '.');
+                    } else {
+                        // Mantém o campo 'premio_formatted' como está
+                        $item['premio_formatted'] = $item['premio'];
+                    }
+    
+                    // Adiciona o item formatado ao array de dados formatados
                     $formattedData[] = $item;
                 }
             }
@@ -276,6 +286,7 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+    
 
     public function getWinners(Request $request)
     {
@@ -1080,8 +1091,7 @@ class PartnerController extends Controller
                 }
             }
             
-            // Atualiza o status do jogo vencedor
-            // $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => 2]);
+            $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => 2]);
         }
         
         if($total_premio > 0 && $client_id) {
