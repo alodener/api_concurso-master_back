@@ -259,21 +259,27 @@ class PartnerController extends Controller
             // Inicializa um array para armazenar os dados formatados
             $formattedData = [];
     
-            // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
+           // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
             foreach ($winnersList as $record) {
                 $jsonData = json_decode($record->json, true);
-    
+            
                 // Adiciona os dados decodificados ao array formatado
                 foreach ($jsonData as $item) {
+                    // Converte o prêmio para inteiro, removendo os caracteres não numéricos
+                    $premioInt = intval(str_replace(['R$ ', '.', ','], ['', '', '.'], $item['premio']));
+            
+                    // Substitui o prêmio original pelo valor inteiro convertido
+                    $item['premio'] = $premioInt;
+            
                     // Verifica se o campo 'premio' é um número ou uma string
-                    if (is_numeric($item['premio'])) {
+                    if (is_numeric($premioInt)) {
                         // Formata o campo 'premio' como uma string formatada em moeda
-                        $item['premio_formatted'] = 'R$ ' . number_format($item['premio'], 2, ',', '.');
+                        $item['premio_formatted'] = 'R$ ' . number_format($premioInt, 2, ',', '.');
                     } else {
                         // Mantém o campo 'premio_formatted' como está
                         $item['premio_formatted'] = $item['premio'];
                     }
-    
+            
                     // Adiciona o item formatado ao array de dados formatados
                     $formattedData[] = $item;
                 }
@@ -286,6 +292,7 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
     
 
     public function getWinners(Request $request)
