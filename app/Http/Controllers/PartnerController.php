@@ -516,9 +516,9 @@ class PartnerController extends Controller
                 // Consulta para transact_balance
                 $transactBalances = DB::connection($connection)
                     ->table('transact_balance')
-                    ->select('type', DB::raw('SUM(value) as total_value'))
+                    ->select('type', 'wallet', DB::raw('SUM(value) as total_value'))
                     ->whereDate('created_at', '=', $data['number'])
-                    ->groupBy('type')
+                    ->groupBy('type', 'wallet') // Adicionando 'wallet' aqui na cláusula GROUP BY
                     ->get();
     
                 // Itera sobre os resultados da consulta
@@ -526,6 +526,8 @@ class PartnerController extends Controller
                     // Extrai o tipo e o valor total do saldo
                     $type = $balance->type;
                     $total_value = $balance->total_value;
+                    $wallet = $balance->wallet;
+
     
                     // Remove os acentos e caracteres especiais do tipo para uniformizar
                     $type = preg_replace('/[^a-zA-Z0-9]/', ' ', $type);
@@ -537,7 +539,7 @@ class PartnerController extends Controller
                         $partnerBalances['recarga_manual'] += $total_value;
                     } elseif (strpos($type, 'Saldo recebido a partir de Saque Disponível.') !== false) {
                         $partnerBalances['pag_premios'] += $total_value;
-                    } elseif (strpos($type, 'Saldo recebido a partir de Bônus.') !== false) {
+                    } elseif (strpos($wallet, 'bonus') !== false) {
                         $partnerBalances['pag_bonus'] += $total_value;
                     }
                 }
