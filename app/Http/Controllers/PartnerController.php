@@ -683,6 +683,7 @@ class PartnerController extends Controller
                 ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
                 ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
                 ->whereDate('bichao_games_vencedores.updated_at', '=', $data['date'])
+                ->where('bichao_games_vencedores.status', '=', 1) 
                 ->get();
     
             return $bichao_games_vencedores;
