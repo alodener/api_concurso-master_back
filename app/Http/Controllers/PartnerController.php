@@ -551,7 +551,6 @@ class PartnerController extends Controller
                     }
                 }
     
-                // Calcula o valor líquido
                 $valor_liquido = $partnerBalances['dep_pix'] + $partnerBalances['recarga_manual'] - $partnerBalances['pag_premios'] - $partnerBalances['pag_bonus'];
 
                 
@@ -561,7 +560,6 @@ class PartnerController extends Controller
                 $partnerBalances['pag_bonus2'] = number_format($partnerBalances['pag_bonus'], 2, '.', '');
                 $partnerBalances['valor_liquido2'] = number_format($valor_liquido, 2, '.', '');
                 
-                // Adiciona os totais e formata os demais campos financeiros
                 $partnerBalances['dep_pix'] = 'R$ ' . number_format($partnerBalances['dep_pix'], 2, ',', '.');
                 $partnerBalances['recarga_manual'] = 'R$ ' . number_format($partnerBalances['recarga_manual'], 2, ',', '.');
                 $partnerBalances['pag_premios'] = 'R$ ' . number_format($partnerBalances['pag_premios'], 2, ',', '.');
