@@ -690,6 +690,39 @@ class PartnerController extends Controller
         }
     }
 
+    public function getResultsBichao2(Request $request)
+    {
+        try {
+            $data = $request->all();
+            $data_partner = Partner::findOrFail($data['partner']);
+            $connection = $data_partner->connection;
+    
+            // Consulta para buscar as informações na tabela bichao_games_vencedores
+            $bichao_games_vencedores = DB::connection($connection)
+                ->table('bichao_games_vencedores')
+                ->select(
+                    'bichao_games_vencedores.game_id',
+                    DB::raw("CONCAT('R$ ', REPLACE(FORMAT(bichao_games_vencedores.valor_premio, 2), '.', ',')) as valor_premio"), // Formatação do valor_premio
+                    'bichao_games.game_1',
+                    'bichao_games_vencedores.status',
+                    'bichao_horarios.banca',
+                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as client_full_name"), // Concatenação do name e last_name
+                    'bichao_modalidades.nome as modalidade_name'
+                )
+                ->leftJoin('bichao_games', 'bichao_games_vencedores.game_id', '=', 'bichao_games.id')
+                ->leftJoin('clients', 'bichao_games.client_id', '=', 'clients.id')
+                ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
+                ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
+                ->whereDate('bichao_games_vencedores.updated_at', '=', $data['date'])
+                // ->where('bichao_games_vencedores.status', '=', 1) 
+                ->get();
+    
+            return $bichao_games_vencedores;
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+
     public function generateRandomGame($modalidade)
     {
         $modalidadesValidas = [

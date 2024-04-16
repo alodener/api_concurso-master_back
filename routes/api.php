@@ -54,6 +54,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::delete('/delete-competition', [PartnerController::class, 'deleteCompetition']);
     Route::get('/financeiro', [PartnerController::class, 'Financial']);
     Route::get('/bichao-results', [PartnerController::class, 'getResultsBichao']);
+    Route::get('/bichao-results2', [PartnerController::class, 'getResultsBichao2']);
     Route::get('/get-result2-bichao', [PartnerController::class, 'distributePrizesBichao']);
     Route::put('/update-status', [PartnerController::class, 'updateStatus']);
     Route::post('/pdf', [PartnerController::class, 'gerarPDF']);
