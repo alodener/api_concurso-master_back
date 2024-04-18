@@ -680,7 +680,7 @@ class PartnerController extends Controller
                 ->leftJoin('clients', 'bichao_games.client_id', '=', 'clients.id')
                 ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
                 ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
-                ->whereDate('bichao_games_vencedores.updated_at', '=', $data['date'])
+                ->whereDate('bichao_games_vencedores.created_at', '=', $data['date'])
                 ->where('bichao_games_vencedores.status', '=', 1) 
                 ->get();
     
@@ -1212,6 +1212,85 @@ class PartnerController extends Controller
 
 
     public function distributePrizes(Request $request)
+    {
+        try {
+            $totalAmount = $request->premio;
+            $numberOfPeople = $request->ganhadores;
+    
+            if ($numberOfPeople <= 0) {
+                return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
+            }
+    
+            $distributionFactors = $this->generatePercentages($numberOfPeople);
+    
+            $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
+    
+            $winnersList = [];
+    
+            $winners = $winners->sortByDesc(function ($winner) {
+                return $winner->premio;
+            });
+    
+            $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
+            $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
+    
+            $allGameNames = [];
+    
+            if (empty($resultInMultiplePartners)) {
+                // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
+                $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
+                $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                $num_tickets = $result['num_tickets'] ?? null;
+            } else {
+                foreach ($resultInMultiplePartners as $result) {
+                    $gameName = $result['game_name'] ?? null;
+                    $allGameNames[] = $gameName;
+    
+                    $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                    $num_tickets = $result['num_tickets'] ?? null;
+    
+                    foreach ($winners as $key => $winner) {
+                        // Check if the current winner is associated with the current game_name
+                        if ($winner->game_name === $gameName) {
+                            $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
+    
+                            $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
+                            $winnerStatus = rand(1, 3);
+                            $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
+    
+                            $winnersList[] = [
+                                'id' => $winnerId,
+                                'name' => $winnerFullName,
+                                'premio' => $winnerPrize,
+                                'status' => $winnerStatus,
+                                'game_name' => $gameName,
+                                'sort_date' => $sortDate,
+                                'num_tickets' => $num_tickets,
+                                'premio_formatted' => $this->formatMoney($winnerPrize),
+                            ];
+                        }
+                    }
+                }
+            }
+    
+            // Adicione ganhadores fictícios para cada nome de jogo único
+            $uniqueGameNames = array_unique($allGameNames);
+            foreach ($uniqueGameNames as $gameName) {
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
+                $winnersList = array_merge($winnersList, $fakeWinners);
+            }
+    
+            $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
+            $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
+            $mergedResults = $this->organizarPorCategoria($mergedResults);
+    
+            return response()->json($mergedResults, 200);
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+    }
+
+    public function distributePrizes3(Request $request)
     {
         try {
             $totalAmount = $request->premio;

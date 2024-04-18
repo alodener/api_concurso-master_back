@@ -50,6 +50,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/get-result', [PartnerController::class, 'getResultInMultiplePartners']);
     Route::get('/aprove-prize', [PartnerController::class, 'aprovePrize']);
     Route::get('/get-result2', [PartnerController::class, 'distributePrizes']);
+    Route::get('/get-result3', [PartnerController::class, 'distributePrizes3']);
     Route::get('/list-competitions', [PartnerController::class, 'listCompetitions']);
     Route::delete('/delete-competition', [PartnerController::class, 'deleteCompetition']);
     Route::get('/financeiro', [PartnerController::class, 'Financial']);
