@@ -1294,7 +1294,9 @@ class PartnerController extends Controller
     {
         try {
             $totalAmount = $request->premio;
-            $numberOfPeople = $request->ganhadores;
+            $numberOfPeople = intval($request->fakes);
+            $listaBase = $request->winners2;
+
     
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
@@ -1310,7 +1312,7 @@ class PartnerController extends Controller
                 return $winner->premio;
             });
     
-            $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
+            $resultInMultiplePartners = $listaBase;
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
     
             $allGameNames = [];
@@ -1318,8 +1320,8 @@ class PartnerController extends Controller
             if (empty($resultInMultiplePartners)) {
                 // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
                 $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
-                $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
-                $num_tickets = $result['num_tickets'] ?? null;
+                $sortDate = Carbon::parse($request->sort_date ?? now())->format('d/m/Y');
+                $num_tickets = $request->num_tickets ?? null;
             } else {
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
