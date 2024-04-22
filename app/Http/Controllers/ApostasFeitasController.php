@@ -26,6 +26,7 @@ class ApostasFeitasController extends Controller
                     'modalidade' => 'required|integer',
                     'inicio' => 'required|date',
                     'fim' => 'required|date',
+                    'bilhete_id' => 'nullable|string', // Validando bilhete_id como string opcional
                 ]);
     
                 if ($validator->fails()) {
@@ -36,12 +37,18 @@ class ApostasFeitasController extends Controller
                 $modalidade = $request->input('modalidade');
                 $inicio = $request->input('inicio') . " 00:00";
                 $fim = $request->input('fim') . " 23:59";
+                $bilheteId = intval($request->input('bilhete_id')); // Convertendo para inteiro
     
-                $data = Apostas::whereBetween('created_at', [$inicio, $fim])
+                $query = Apostas::whereBetween('created_at', [$inicio, $fim])
                     ->where('tipo_jogo', $banca)
-                    ->where('jogo_id', $modalidade)
-                    ->distinct()
-                    ->get(['id', 'nome_usuario', 'usuario_id', 'tipo_jogo', 'jogo', 'valor_aposta', 'valor_premio', 'created_at', 'bilhete', 'concurso']);
+                    ->where('jogo_id', $modalidade);
+    
+                // Adicionando a condição para o bilhete_id, se ele foi fornecido na requisição
+                if ($bilheteId !== 0) { // Verifica se $bilheteId não é zero, que é o valor padrão de intval() se a conversão falhar
+                    $query->where('bilhete', $bilheteId);
+                }
+    
+                $data = $query->distinct()->get(['id', 'nome_usuario', 'usuario_id', 'tipo_jogo', 'jogo', 'valor_aposta', 'valor_premio', 'created_at', 'bilhete', 'concurso']);
     
                 $dados = [];
                 $valorTotal = 0;
@@ -70,7 +77,8 @@ class ApostasFeitasController extends Controller
                         'jogo' => $info->jogo,
                         'valor' => number_format($info->valor_aposta, 2, ',', '.'),
                         'premio' => number_format($info->valor_premio, 2, ',', '.'),
-                        'criacao' => $date->format('d/m/Y H:i:s'),
+                        'criacao' => $date->format('H:i:s'),
+                        'numeros' => $info->numbers,
                         'bilhete' => $info->bilhete,
                         'concurso' => $info->concurso,
                         'usuario_id' => $info->usuario_id, // Adicionando usuario_id
@@ -90,6 +98,7 @@ class ApostasFeitasController extends Controller
             throw new Exception($th);
         }
     }
+    
     
     
 
