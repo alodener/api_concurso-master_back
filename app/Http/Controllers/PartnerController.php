@@ -88,6 +88,25 @@ class PartnerController extends Controller
         }
     }
 
+    public function type_games($partnerId) {
+        try {
+            $data_partner = Partner::findOrFail($partnerId);
+    
+            // Ajuste para pesquisa por data
+            $type_games = DB::connection($data_partner['connection'])
+                ->table('type_games')
+                ->select('name', 'id') // Adicione uma vírgula para separar os campos selecionados
+                ->get(); // Adicione o método get() para executar a consulta e obter os resultados
+    
+            return response()->json($type_games, 200);
+    
+        } catch (\Throwable $th) {
+            // Em vez de lançar a exceção original, é melhor criar uma nova mensagem de erro
+            return response()->json(['error' => 'Erro ao recuperar os jogos do tipo.'], 500);
+        }
+    }
+    
+
     public function gerarPDF(Request $request)
     {
 

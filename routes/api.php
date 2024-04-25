@@ -43,6 +43,9 @@ Route::middleware('auth')->prefix('logs')->group(function () {
     Route::get('/', [LogController::class, 'index']);
 });
 
+
+Route::get('/type-games/{partnerId}', [PartnerController::class, 'type_games']);
+
 Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/', [PartnerController::class, 'index']);
     Route::post('/', [PartnerController::class, 'createGameInMultiplePartners']);
@@ -64,6 +67,8 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
+    Route::get('/type-games/{partnerId}', [PartnerController::class, 'type_games']);
+
 
 });
 
