@@ -95,16 +95,26 @@ class PartnerController extends Controller
             // Ajuste para pesquisa por data
             $type_games = DB::connection($data_partner['connection'])
                 ->table('type_games')
-                ->select('name', 'id') // Adicione uma vírgula para separar os campos selecionados
-                ->get(); // Adicione o método get() para executar a consulta e obter os resultados
+                ->select('name', 'id')
+                ->where(function ($query) {
+                    $query->where('name', 'SLG-KINO LOTO')
+                          ->orWhere('name', 'SLG-RE-KINO LOTO')
+                          ->orWhere('name', 'SLG - PREMIOS ESPECIALES')
+                          ->orWhere('name', 'SLG-CHAO JEFE LOTO')
+                          ->orWhere('name', 'SLG-MEGA LOTTO')
+                          ->orWhere('name', 'SLG- MEGA KINO')
+                          ->orWhere('name', 'SLG - STª LUCIA DOUBLE')
+                          ->orWhere('name', 'SLG - QUINA FÁCIL');
+                })
+                ->get(); 
     
             return response()->json($type_games, 200);
     
         } catch (\Throwable $th) {
-            // Em vez de lançar a exceção original, é melhor criar uma nova mensagem de erro
             return response()->json(['error' => 'Erro ao recuperar os jogos do tipo.'], 500);
         }
     }
+    
     
 
     public function gerarPDF(Request $request)
