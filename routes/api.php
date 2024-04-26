@@ -44,7 +44,6 @@ Route::middleware('auth')->prefix('logs')->group(function () {
 });
 
 
-Route::get('/type-games/{partnerId}', [PartnerController::class, 'type_games']);
 
 Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/', [PartnerController::class, 'index']);
@@ -64,11 +63,9 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::post('/pdf', [PartnerController::class, 'gerarPDF']);
     Route::post('/winners-lists', [PartnerController::class, 'storeListWinners']);
     Route::get('/winners-lists', [PartnerController::class, 'getWinners']);  // Lista das bancas!!
-    
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
-    Route::get('/type-games/{partnerId}', [PartnerController::class, 'type_games']);
-
+    Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games']);
 
 });
 
@@ -79,3 +76,4 @@ Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAnd
 Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']); //Traz a lista para conpiar e colar
 
 Route::get('/system', [PartnerController::class, 'processarParceiros']); 
+Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games']);
