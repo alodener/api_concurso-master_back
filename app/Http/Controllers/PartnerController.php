@@ -975,7 +975,7 @@ class PartnerController extends Controller
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw);
     
-                    $drawGames = DB::connection($data_partner['connection'])
+                    $drawGamesQuery = DB::connection($data_partner['connection'])
                         ->table('games')
                         ->select([
                             'games.id',
@@ -987,8 +987,14 @@ class PartnerController extends Controller
                         ->join('clients', 'clients.id', '=', 'games.client_id')
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                         ->where('games.checked', 1)
-                        ->whereIn('games.id', $numbers_draw)
-                        ->get();
+                        ->whereIn('games.id', $numbers_draw);
+    
+                    // Verifique se o parâmetro 'type_game' está presente na requisição
+                    if (isset($data['type_game'])) {
+                        $drawGamesQuery->where('games.type_game_id', $data['type_game']);
+                    }
+    
+                    $drawGames = $drawGamesQuery->get();
     
                     foreach ($drawGames as $game) {
                         $game->sort_date = $competition->sort_date;
