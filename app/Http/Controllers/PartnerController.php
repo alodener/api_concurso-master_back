@@ -1271,17 +1271,18 @@ class PartnerController extends Controller
     
             $allGameNames = [];
     
+            
             if (empty($resultInMultiplePartners)) {
                 // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
                 $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
-                $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                 $num_tickets = $result['num_tickets'] ?? null;
             } else {
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
                     $allGameNames[] = $gameName;
     
-                    $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                    $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                     $num_tickets = $result['num_tickets'] ?? null;
     
                     foreach ($winners as $key => $winner) {
@@ -1355,14 +1356,14 @@ class PartnerController extends Controller
             if (empty($resultInMultiplePartners)) {
                 // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
                 $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
-                $sortDate = Carbon::parse($request->sort_date ?? now())->format('d/m/Y');
+                $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                 $num_tickets = $request->num_tickets ?? null;
             } else {
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
                     $allGameNames[] = $gameName;
     
-                    $sortDate = Carbon::parse($result['sort_date'] ?? now())->format('d/m/Y');
+                    $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                     $num_tickets = $result['num_tickets'] ?? null;
     
                     foreach ($winners as $key => $winner) {
