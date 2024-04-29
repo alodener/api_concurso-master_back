@@ -100,6 +100,7 @@ class PartnerController extends Controller
                     $query->where('name', 'SLG-KINO LOTO')
                           ->orWhere('name', 'SLG-RE-KINO LOTO')
                           ->orWhere('name', 'SLG - PREMIOS ESPECIALES')
+                          ->orWhere('name', 'SLG - CHISPALOTO')
                           ->orWhere('name', 'SLG-CHAO JEFE LOTO')
                           ->orWhere('name', 'SLG-MEGA LOTTO')
                           ->orWhere('name', 'SLG- MEGA KINO')
@@ -1149,6 +1150,7 @@ class PartnerController extends Controller
     public function updateStatusBichao(Request $request) {
         $data = $request->all();
         $data_partner = Partner::findOrFail($data['partner']);
+        $status = $data['status'];
         
         $total_premio = 0;
         $client_id = null;
@@ -1167,7 +1169,7 @@ class PartnerController extends Controller
                 }
             }
             
-            $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => 2]);
+            $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => $status]);
         }
         
         if($total_premio > 0 && $client_id) {

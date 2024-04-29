@@ -78,8 +78,8 @@ class ApostasFeitasController extends Controller
                         'valor' => number_format($info->valor_aposta, 2, ',', '.'),
                         'premio' => number_format($info->valor_premio, 2, ',', '.'),
                         'criacao' => $date->format('H:i:s'),
-                        'numeros' => $info->numbers,
-                        'bilhete' => $info->bilhete,
+                        'numeros' => $info->bilhete,
+                        'bilhete' => $info->jogo_id,
                         'concurso' => $info->concurso,
                         'usuario_id' => $info->usuario_id, // Adicionando usuario_id
                     ];
