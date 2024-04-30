@@ -104,8 +104,7 @@ class PartnerController extends Controller
                           ->orWhere('name', 'SLG-CHAO JEFE LOTO')
                           ->orWhere('name', 'SLG-MEGA LOTTO')
                           ->orWhere('name', 'SLG- MEGA KINO')
-                          ->orWhere('name', 'SLG - STª LUCIA DOUBLE')
-                          ->orWhere('name', 'SLG - QUINA FÁCIL');
+                          ->orWhere('name', 'SLG - STª LUCIA DOUBLE');
                 })
                 ->get(); 
     
