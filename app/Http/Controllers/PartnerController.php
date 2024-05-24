@@ -355,6 +355,60 @@ class PartnerController extends Controller
         // Retornar os resultados
         return response()->json($winners);
     }
+
+    public function getWinnersListByBancaAndHours(Request $request)
+{
+    try {
+        // Recupera o banca_id e as horas da requisição
+        $bancaId = $request->input('partner');
+        $hours = $request->input('hours');
+    
+        // Calcula a data e hora inicial subtraindo as horas fornecidas da data e hora atual
+        $date = now()->subHours($hours);
+    
+        // Busca os registros na tabela winners_lists com base no banca_id e created_at nas últimas horas
+        $winnersList = WinnersList::where('banca_id', $bancaId)
+            ->where('created_at', '>=', $date)
+            ->select('json')
+            ->get();
+    
+        // Inicializa um array para armazenar os dados formatados
+        $formattedData = [];
+    
+        // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
+        foreach ($winnersList as $record) {
+            $jsonData = json_decode($record->json, true);
+        
+            // Adiciona os dados decodificados ao array formatado
+            foreach ($jsonData as $item) {
+                // Converte o prêmio para inteiro, removendo os caracteres não numéricos
+                $premioInt = intval(str_replace(['R$ ', '.', ','], ['', '', '.'], $item['premio']));
+        
+                // Substitui o prêmio original pelo valor inteiro convertido
+                $item['premio'] = $premioInt;
+        
+                // Verifica se o campo 'premio' é um número ou uma string
+                if (is_numeric($premioInt)) {
+                    // Formata o campo 'premio' como uma string formatada em moeda
+                    $item['premio_formatted'] = 'R$ ' . number_format($premioInt, 2, ',', '.');
+                } else {
+                    // Mantém o campo 'premio_formatted' como está
+                    $item['premio_formatted'] = $item['premio'];
+                }
+        
+                // Adiciona o item formatado ao array de dados formatados
+                $formattedData[] = $item;
+            }
+        }
+    
+        // Retorna os dados formatados como JSON
+        return response()->json($formattedData, 200);
+    } catch (\Exception $e) {
+        // Retorna uma resposta HTTP 500 Internal Server Error em caso de erro
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
     
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
@@ -1246,10 +1300,29 @@ class PartnerController extends Controller
         return $gameNames;
     }
 
+    private function getGameName($partnerId, $idgame)
+{   
+    // Recupera as informações do parceiro
+    $data_partner = Partner::findOrFail($partnerId);
+
+    // Consulta a tabela type_games na conexão específica do parceiro, filtrando pelo id do jogo
+    $type_game_name = DB::connection($data_partner['connection'])
+            ->table('type_games')
+            ->where('id', $idgame) // Filtra pelos registros que correspondem ao idgame
+            ->value('name'); // Retorna apenas o valor do campo 'name'
+
+    return $type_game_name;
+}
+
+
 
     public function distributePrizes(Request $request)
-    {
+    {   
         try {
+
+
+            $partnerId = $request->partner;
+            $idgame = $request->type_game;
             $totalAmount = $request->premio;
             $numberOfPeople = $request->ganhadores;
     
@@ -1312,8 +1385,10 @@ class PartnerController extends Controller
     
             // Adicione ganhadores fictícios para cada nome de jogo único
             $uniqueGameNames = array_unique($allGameNames);
+            $gmname = $this->getGameName($partnerId,$idgame); // Implemente esta função conforme necessário
+
             foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gmname, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
     
@@ -1394,7 +1469,7 @@ class PartnerController extends Controller
             // Adicione ganhadores fictícios para cada nome de jogo único
             $uniqueGameNames = array_unique($allGameNames);
             foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $xx, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
     
