@@ -66,7 +66,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
-    Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games']);
+    Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games'])->name('modalidades');;
 
 });
 

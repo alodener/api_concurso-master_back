@@ -997,15 +997,77 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
+
+    public function getTypeIdGames($partner, $gametype)
+    {
+        // Supondo que $this->type_games($partner) retorne um JsonResponse
+        $response = $this->type_games($partner);
+        $typeGames = json_decode($response->getContent(), true); // Converte o JSON para um array associativo
+    
+        $gameNames = [];
+        switch ($gametype) {
+            case 'loteria_brasileira':
+                $gameNames = [
+                    'SLG-KINO LOTO',
+                    'SLG-RE-KINO LOTO',
+                    'SLG - PREMIOS ESPECIALES',
+                    'SLG-CHAO JEFE LOTO',
+                    'SLG-MEGA LOTTO',
+                    'SLG- MEGA KINO',
+                    'SLG - CHISPALOTO',
+                    'SLG - STª LUCIA DOUBLE',
+                    'Super Quina',
+                    'SLG-MEGA LOTTO',
+                ];
+                break;
+            case 'loteria_chile':
+                $gameNames = [
+                    'SLG-KINO LOTO',
+                    'SLG-RE-KINO LOTO',
+                    'SLG - PREMIOS ESPECIALES',
+                    'SLG-CHAO JEFE LOTO',
+                    'SLG-MEGA LOTTO',
+                    'SLG- MEGA KINO'
+                ];
+                break;
+            case 'loteria_mexico':
+                $gameNames = ['SLG - CHISPALOTO'];
+                break;
+            case 'loteria_santa_lucia':
+                $gameNames = ['SLG - STª LUCIA DOUBLE'];
+                break;
+            case 'loteria_polonia':
+                $gameNames = ['Super Quina'];
+                break;
+            case 'loteria_reino_unido':
+                $gameNames = ['SLG-MEGA LOTTO'];
+                break;
+            default:
+                return []; // Se o tipo de jogo não for encontrado, retorna um array vazio
+        }
+    
+        // Filtra os jogos baseados nos nomes fornecidos
+        $filteredGames = array_filter($typeGames, function($game) use ($gameNames) {
+            return in_array($game['name'], $gameNames);
+        });
+    
+        // Extrai os IDs dos jogos filtrados
+        $gameIds = array_column($filteredGames, 'id');
+    
+        return $gameIds; // Retorna os IDs dos jogos filtrados
+    }
+    
+    
     
     
     public function getResultInMultiplePartners(Request $request)
     {
         try {
+
             $data = $request->all();
             $winners = [];
             $data_partner = Partner::findOrFail($data['partner']);
-    
+
             // Ajuste para pesquisa por data
             $concurses = DB::connection($data_partner['connection'])
                 ->table('competitions')
@@ -1043,9 +1105,16 @@ class PartnerController extends Controller
                         ->where('games.checked', 1)
                         ->whereIn('games.id', $numbers_draw);
     
-                    // Verifique se o parâmetro 'type_game' está presente na requisição
-                    if (isset($data['type_game'])) {
-                        $drawGamesQuery->where('games.type_game_id', $data['type_game']);
+                    // Verifique se o parâmetro 'groupgame' está presente na requisição
+                    
+                    if (isset($data['groupgame'])) {
+                    // Verifica se loteria é brasileira e exclui os ids
+                        if($data['groupgame'] == "loteria_brasileira"){
+                            $gameIds = $this->getTypeIdGames($data['partner'],$data['groupgame']);
+                            $drawGamesQuery->whereNotIn('games.type_game_id', $gameIds);
+                        }else{
+                        $gameIds = $this->getTypeIdGames($data['partner'],$data['groupgame']);
+                        $drawGamesQuery->whereIn('games.type_game_id', $gameIds);}
                     }
     
                     $drawGames = $drawGamesQuery->get();
@@ -1320,12 +1389,15 @@ class PartnerController extends Controller
     {   
         try {
 
+            $data = $request->all();
 
             $partnerId = $request->partner;
             $idgame = $request->type_game;
             $totalAmount = $request->premio;
             $numberOfPeople = $request->ganhadores;
-    
+            $gameIds = $this->getTypeIdGames($data['partner'],$data['groupgame']);
+
+
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
@@ -1342,7 +1414,8 @@ class PartnerController extends Controller
     
             $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-    
+            
+            
             $allGameNames = [];
     
             
@@ -1388,7 +1461,7 @@ class PartnerController extends Controller
             $gmname = $this->getGameName($partnerId,$idgame); // Implemente esta função conforme necessário
 
             foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gmname, $sortDate);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
     
@@ -1408,12 +1481,14 @@ class PartnerController extends Controller
             $totalAmount = $request->premio;
             $numberOfPeople = intval($request->fakes);
             $listaBase = $request->winners2;
+            $listaBase2 = $request->winners3;
 
     
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
-    
+            
+
             $distributionFactors = $this->generatePercentages($numberOfPeople);
     
             $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
@@ -1426,7 +1501,7 @@ class PartnerController extends Controller
     
             $resultInMultiplePartners = $listaBase;
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-    
+            
             $allGameNames = [];
     
             if (empty($resultInMultiplePartners)) {
@@ -1469,14 +1544,17 @@ class PartnerController extends Controller
             // Adicione ganhadores fictícios para cada nome de jogo único
             $uniqueGameNames = array_unique($allGameNames);
             foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $xx, $sortDate);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
-    
-            $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
+            
+            $mergedResults = null;
+            $mergedResults = array_merge($listaBase2, $winnersList);
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
             $mergedResults = $this->organizarPorCategoria($mergedResults);
-    
+            
+
+
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
             throw new Exception($th);
