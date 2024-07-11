@@ -298,7 +298,7 @@ return [
             'host' => '92.204.144.50',
             'port' => '3306',
             'database' => 'superloto_BD_PROD',
-            'username' => 'superloto_BD_PROD',
+            'username' => 'superloto_PROD_USER',
             'password' => 'SmartPayBD22',
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
