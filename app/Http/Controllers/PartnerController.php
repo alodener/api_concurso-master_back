@@ -21,22 +21,22 @@ class PartnerController extends Controller
 {
     function processarParceiros() {
         $bancasAtualizadas = []; // Inicializa o array para armazenar os IDs das bancas atualizadas
-    
+
         // Obtém todos os parceiros
         $parceiros = DB::table('partners')->get();
-    
+
         foreach ($parceiros as $parceiro) {
             // Obtém o ID e o nome do parceiro
             $idParceiro = $parceiro->id;
             $nameParceiro = $parceiro->name;
-    
+
             // Verifica se já existe um registro para esse partner_id
             $registroExistente = DB::connection($parceiro->connection)
                 ->table('system')
                 ->where('nome_config', 'partner_id')
                 ->where('value', $idParceiro)
                 ->exists();
-    
+
             // Se não existir um registro para esse partner_id, insere os registros
             if (!$registroExistente) {
                 DB::connection($parceiro->connection)->table('system')->insert([
@@ -44,22 +44,22 @@ class PartnerController extends Controller
                     ['nome_config' => 'partner_name', 'value' => $nameParceiro, 'created_at' => now(), 'updated_at' => now()]
                     // Você pode adicionar mais campos aqui, se necessário
                 ]);
-    
+
                 // Adiciona o ID da banca ao array de bancas atualizadas
                 $bancasAtualizadas[] = $idParceiro;
             }
         }
-    
+
         return $bancasAtualizadas; // Retorna o array de bancas atualizadas
-    }  
+    }
 
     function deletarRegistrosInseridosHoje() {
         // Obtém a data atual
         $hoje = now()->toDateString(); // Obtém a data atual no formato 'YYYY-MM-DD'
-    
+
         // Obtém todos os parceiros
         $parceiros = Partner::all();
-    
+
         // Passa por todos os parceiros
         foreach ($parceiros as $parceiro) {
             // Deleta os registros da tabela System inseridos hoje para o parceiro atual
@@ -70,19 +70,19 @@ class PartnerController extends Controller
     public function index() {
         try {
             $partners = Partner::all();
-    
+
             $allPartnersIds = $partners->pluck('id')->toArray();
-    
+
             $allPartners = [
                 'name' => 'Todas as bancas',
                 'id' => $allPartnersIds,
                 'connection' => 'todas_as_bancas',
             ];
-    
+
             $partners->prepend($allPartners);
-    
+
             return response()->json($partners, 200);
-    
+
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
@@ -91,7 +91,7 @@ class PartnerController extends Controller
     public function type_games($partnerId) {
         try {
             $data_partner = Partner::findOrFail($partnerId);
-    
+
             // Ajuste para pesquisa por data
             $type_games = DB::connection($data_partner['connection'])
                 ->table('type_games')
@@ -106,16 +106,16 @@ class PartnerController extends Controller
                           ->orWhere('name', 'SLG- MEGA KINO')
                           ->orWhere('name', 'SLG - STª LUCIA DOUBLE');
                 })
-                ->get(); 
-    
+                ->get();
+
             return response()->json($type_games, 200);
-    
+
         } catch (\Throwable $th) {
             return response()->json(['error' => 'Erro ao recuperar os jogos do tipo.'], 500);
         }
     }
-    
-    
+
+
 
     public function gerarPDF(Request $request)
     {
@@ -139,12 +139,12 @@ class PartnerController extends Controller
 
 
         // return $data;
-    
+
         // Carregar a visualização do PDF com os dados
         $pdf = PDF::loadView('pdf.exemplo', $data);
 
         // Definir o nome do arquivo e o tipo de conteúdo
-    
+
         // Fazer o download do PDF
         return $pdf->download('relatorio_financeiro.pdf');
     }
@@ -154,21 +154,21 @@ class PartnerController extends Controller
         try {
             // Recupera todos os dados do request
             $requestData = $request->all();
-    
+
             // Atribui zero aos valores de fakes e premio se forem null
             $fakes = $requestData['fakes'] !== null && is_numeric($requestData['fakes']) ? $requestData['fakes'] : 0;
             $premio = $requestData['premio'] !== null && is_numeric($requestData['premio']) ? $requestData['premio'] : 0;
-    
+
             // Verifica se há itens na lista de ganhadores
             if (isset($requestData['winners2']) && !empty($requestData['winners2'])) {
                 // Converte a lista de ganhadores para JSON
                 $winnersJson = json_encode($requestData['winners2']);
-    
+
                 // Verifica se já existe um registro para essa banca e data de sorteio
                 $existingWinnersList = WinnersList::where('banca_id', $requestData['banca_id'])
                     ->where('sort_date', $request['sort_date'])
                     ->first();
-    
+
                 // Verifica se o registro existe e atualiza, senão, cria um novo
                 if ($existingWinnersList) {
                     // Atualiza o registro existente com os novos dados
@@ -177,7 +177,7 @@ class PartnerController extends Controller
                         'fake_premio' => $premio,
                         'json' => $winnersJson
                     ]);
-    
+
                     // Retorna uma resposta HTTP 200 OK com os dados atualizados
                     return response()->json($existingWinnersList, 200);
                 } else {
@@ -189,7 +189,7 @@ class PartnerController extends Controller
                         'sort_date' => $request['sort_date'],
                         'json' => $winnersJson
                     ]);
-    
+
                     // Retorna uma resposta HTTP 200 OK com os dados do novo registro
                     return response()->json($winnersList, 200);
                 }
@@ -209,61 +209,61 @@ class PartnerController extends Controller
         try {
             // Recupera os dados da requisição
             $requestData = $request->all();
-    
+
             // Consulta no banco de dados para obter os dados da tabela 'winners_lists' com base na banca e na data do sorteio
             $winnersList = WinnersList::where('banca_id', $requestData['partner'])
                                         ->whereDate('sort_date', $requestData['sort_date'])
                                         ->first();
-    
+
             if (!$winnersList) {
                 return response()->json(['error' => 'Nenhum registro encontrado para a banca e data do sorteio especificados'], 404);
             }
-    
+
             // Decodifica o JSON armazenado na coluna 'json' para obter os dados dos ganhadores
             $winners2 = json_decode($winnersList->json, true);
-    
+
             // Inicia as variáveis para cálculo do total de prêmios e bilhetes
             $totalGeral = 0;
             $totalTickets = 0;
             $groupedByGame = [];
-    
+
             // Calcula o total geral de prêmios e total de bilhetes, e agrupa os ganhadores pelo nome do jogo
             foreach ($winners2 as $winner) {
                 $valorNumerico = is_string($winner['premio']) ? floatval(str_replace(['.', ','], ['', '.'], $winner['premio'])) : $winner['premio'];
                 $totalGeral += $valorNumerico;
                 $totalTickets += floatval($winner['num_tickets']);
-    
+
                 if (!isset($groupedByGame[$winner['game_name']])) {
                     $groupedByGame[$winner['game_name']] = [];
                 }
-    
+
                 $groupedByGame[$winner['game_name']][] = $winner;
             }
-    
+
             // Obtém o nome do parceiro selecionado a partir dos dados do registro de winnersList
             $partnerSelectedName = $winnersList->name;
-    
+
             // Inicia a formatação do conteúdo da tabela
             $formattedContent = "🤑 {$partnerSelectedName} 🤑\n";
             $formattedContent .= "SORTEIOS DO DIA: {$winners2[0]['sort_date']}\n";
             $formattedContent .= "PREMIAÇÕES GERAIS: " . number_format($totalGeral, 2, ',', '.') . " 💰\n";
             $formattedContent .= "TOTAL DE BILHETES: $totalTickets\n";
-    
+
             // Percorre os ganhadores agrupados por jogo e adiciona ao conteúdo formatado
             foreach ($groupedByGame as $gameName => $winners) {
                 $formattedContent .= "\n🟡 $gameName\n";
                 $totalPrizeByGame = 0;
-    
+
                 foreach ($winners as $winner) {
                     $formattedContent .= "✔️ {$winner['name']}, {$winner['num_tickets']} cupons\n";
                     $formattedContent .= "💰 Prêmio: {$winner['premio_formatted']}\n\n";
                     $valorNumerico = is_string($winner['premio']) ? floatval(str_replace(['.', ','], ['', '.'], $winner['premio'])) : $winner['premio'];
                     $totalPrizeByGame += $valorNumerico;
                 }
-    
+
                 $formattedContent .= "Total de Prêmios 💰 " . number_format($totalPrizeByGame, 2, ',', '.') . " 💰\n";
             }
-    
+
             // Retorna a resposta com o conteúdo formatado
             return response()->json(['formatted_content' => $formattedContent], 200);
         } catch (\Exception $e) {
@@ -271,35 +271,35 @@ class PartnerController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    
+
     public function getWinnersListByBancaAndDate(Request $request)
     {
         try {
             // Recupera o banca_id e a data da requisição
             $bancaId = $request->input('partner');
             $createdAt = $request->input('sort_date');
-    
+
             // Busca os registros na tabela winners_lists com base no banca_id e created_at
             $winnersList = WinnersList::where('banca_id', $bancaId)
                 ->whereDate('sort_date', $createdAt)
                 ->select('json')
                 ->get();
-    
+
             // Inicializa um array para armazenar os dados formatados
             $formattedData = [];
-    
+
            // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
             foreach ($winnersList as $record) {
                 $jsonData = json_decode($record->json, true);
-            
+
                 // Adiciona os dados decodificados ao array formatado
                 foreach ($jsonData as $item) {
                     // Converte o prêmio para inteiro, removendo os caracteres não numéricos
                     $premioInt = intval(str_replace(['R$ ', '.', ','], ['', '', '.'], $item['premio']));
-            
+
                     // Substitui o prêmio original pelo valor inteiro convertido
                     $item['premio'] = $premioInt;
-            
+
                     // Verifica se o campo 'premio' é um número ou uma string
                     if (is_numeric($premioInt)) {
                         // Formata o campo 'premio' como uma string formatada em moeda
@@ -308,12 +308,12 @@ class PartnerController extends Controller
                         // Mantém o campo 'premio_formatted' como está
                         $item['premio_formatted'] = $item['premio'];
                     }
-            
+
                     // Adiciona o item formatado ao array de dados formatados
                     $formattedData[] = $item;
                 }
             }
-    
+
             // Retorna os dados formatados como JSON
             return response()->json($formattedData, 200);
         } catch (\Exception $e) {
@@ -322,36 +322,36 @@ class PartnerController extends Controller
         }
     }
 
-    
+
 
     public function getWinners(Request $request)
     {
         // Recuperar os parâmetros da requisição
         $partnerIds = explode(',', $request->input('partner'));
         $sort_date = $request->input('sort_date');
-        
+
         // Consultar o banco de dados para cada parceiro e mesclar os resultados
         $winners = [];
         foreach ($partnerIds as $partner) {
             // Recuperar o nome da banca
             $partnerName = Partner::where('id', $partner)->value('name');
-        
+
             // Consultar os vencedores da banca
             $partnerWinners = WinnersList::where('banca_id', $partner)
                 ->whereDate('sort_date', $sort_date)
                 ->get();
-        
+
             // Mesclar os resultados no array principal
             foreach ($partnerWinners as $winner) {
                 // Formatando a data para incluir apenas a data (sem hora)
                 $winner->sort_date = date('Y-m-d', strtotime($winner->sort_date));
-                
+
                 // Adicionar o nome da banca ao resultado
                 $winner->partner_name = $partnerName;
                 $winners[] = $winner;
             }
         }
-        
+
         // Retornar os resultados
         return response()->json($winners);
     }
@@ -362,31 +362,31 @@ class PartnerController extends Controller
         // Recupera o banca_id e as horas da requisição
         $bancaId = $request->input('partner');
         $hours = $request->input('hours');
-    
+
         // Calcula a data e hora inicial subtraindo as horas fornecidas da data e hora atual
         $date = now()->subHours($hours);
-    
+
         // Busca os registros na tabela winners_lists com base no banca_id e created_at nas últimas horas
         $winnersList = WinnersList::where('banca_id', $bancaId)
             ->where('created_at', '>=', $date)
             ->select('json')
             ->get();
-    
+
         // Inicializa um array para armazenar os dados formatados
         $formattedData = [];
-    
+
         // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
         foreach ($winnersList as $record) {
             $jsonData = json_decode($record->json, true);
-        
+
             // Adiciona os dados decodificados ao array formatado
             foreach ($jsonData as $item) {
                 // Converte o prêmio para inteiro, removendo os caracteres não numéricos
                 $premioInt = intval(str_replace(['R$ ', '.', ','], ['', '', '.'], $item['premio']));
-        
+
                 // Substitui o prêmio original pelo valor inteiro convertido
                 $item['premio'] = $premioInt;
-        
+
                 // Verifica se o campo 'premio' é um número ou uma string
                 if (is_numeric($premioInt)) {
                     // Formata o campo 'premio' como uma string formatada em moeda
@@ -395,12 +395,12 @@ class PartnerController extends Controller
                     // Mantém o campo 'premio_formatted' como está
                     $item['premio_formatted'] = $item['premio'];
                 }
-        
+
                 // Adiciona o item formatado ao array de dados formatados
                 $formattedData[] = $item;
             }
         }
-    
+
         // Retorna os dados formatados como JSON
         return response()->json($formattedData, 200);
     } catch (\Exception $e) {
@@ -409,7 +409,7 @@ class PartnerController extends Controller
     }
 }
 
-    
+
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
         ini_set('max_execution_time', 180);
@@ -498,7 +498,7 @@ class PartnerController extends Controller
         try {
             $data = $request->all();
             $resultsArray = array_map('intval', explode(',', $data['result']));
-    
+
             foreach ($data['partners'] as $partner) {
                 $winners = null;
                 $draw_data = null;
@@ -573,7 +573,7 @@ class PartnerController extends Controller
 
             $groupedBalances = [];
 
-    
+
             // Itera sobre todas as partners
             foreach ($partners as $partner) {
                 // Inicializa o array de saldo agrupado para este parceiro
@@ -583,26 +583,26 @@ class PartnerController extends Controller
                     'recarga_manual' => 0,
                     'pag_premios' => 0,
                     'pag_bonus' => 0,
-                    'valor_liquido' => 0, 
+                    'valor_liquido' => 0,
                     'dep_pix2' => 0,
                     'recarga_manual2' => 0,
                     'pag_premios2' => 0,
                     'pag_bonus2' => 0,
-                    'valor_liquido2' => 0, 
+                    'valor_liquido2' => 0,
 
                 ];
-    
+
 
                 $totalPrizeAmount = $this->getResultInMultiplePartners2($request, $partner->id);
-    
+
                 // Armazena o valor total dos prêmios na chave 'pag_premios' do array de saldo agrupado
                 $partnerBalances['pag_premios'] =  $totalPrizeAmount;
-    
+
                 // Obtém os dados da requisição
                 $data = $request->all();
                 // Define a conexão com base na partner atual
                 $connection = $partner->connection;
-    
+
                 // Consulta para transact_balance
                 $transactBalances = DB::connection($connection)
                     ->table('transact_balance')
@@ -610,7 +610,7 @@ class PartnerController extends Controller
                     ->whereDate('created_at', '=', $data['number'])
                     ->groupBy('type', 'wallet') // Adicionando 'wallet' aqui na cláusula GROUP BY
                     ->get();
-    
+
                 // Itera sobre os resultados da consulta
                 foreach ($transactBalances as $balance) {
                     // Extrai o tipo e o valor total do saldo
@@ -618,10 +618,10 @@ class PartnerController extends Controller
                     $total_value = $balance->total_value;
                     $wallet = $balance->wallet;
 
-    
+
                     // Remove os acentos e caracteres especiais do tipo para uniformizar
                     $type = preg_replace('/[^a-zA-Z0-9]/', ' ', $type);
-    
+
                     // Verifica e acumula os valores correspondentes
                     if (strpos($type, 'Recarga efetuada por meio da plataforma') !== false) {
                         $partnerBalances['dep_pix'] += $total_value;
@@ -633,23 +633,23 @@ class PartnerController extends Controller
                         $partnerBalances['pag_bonus'] += $total_value;
                     }
                 }
-    
+
                 $valor_liquido = $partnerBalances['dep_pix'] + $partnerBalances['recarga_manual'] - $partnerBalances['pag_premios'] - $partnerBalances['pag_bonus'];
 
-                
+
                 $partnerBalances['dep_pix2'] = number_format($partnerBalances['dep_pix'], 2, '.', '');
                 $partnerBalances['recarga_manual2'] = number_format($partnerBalances['recarga_manual'], 2, '.', '');
                 $partnerBalances['pag_premios2'] = number_format($partnerBalances['pag_premios'], 2, '.', '');
                 $partnerBalances['pag_bonus2'] = number_format($partnerBalances['pag_bonus'], 2, '.', '');
                 $partnerBalances['valor_liquido2'] = number_format($valor_liquido, 2, '.', '');
-                
+
                 $partnerBalances['dep_pix'] = 'R$ ' . number_format($partnerBalances['dep_pix'], 2, ',', '.');
                 $partnerBalances['recarga_manual'] = 'R$ ' . number_format($partnerBalances['recarga_manual'], 2, ',', '.');
                 $partnerBalances['pag_premios'] = 'R$ ' . number_format($partnerBalances['pag_premios'], 2, ',', '.');
                 $partnerBalances['pag_bonus'] = 'R$ ' . number_format($partnerBalances['pag_bonus'], 2, ',', '.');
                 $partnerBalances['valor_liquido'] = 'R$ ' . number_format($valor_liquido, 2, ',', '.');
 
-                
+
 
                 // Adiciona o saldo agrupado para este parceiro ao array principal
                 $groupedBalances[] = $partnerBalances;
@@ -657,11 +657,11 @@ class PartnerController extends Controller
                 usort($groupedBalances, function($a, $b) {
                     $valorLiquidoA = $a['valor_liquido'];
                     $valorLiquidoB = $b['valor_liquido'];
-        
+
                     // Remove o prefixo 'R$ ' e converte para float
                     $valorLiquidoA = floatval(str_replace(['R$ ', ',', '.'], ['', '.', ''], $valorLiquidoA));
                     $valorLiquidoB = floatval(str_replace(['R$ ', ',', '.'], ['', '.', ''], $valorLiquidoB));
-        
+
                     // Ordena de forma decrescente
                     if ($valorLiquidoA == $valorLiquidoB) {
                         return 0;
@@ -669,14 +669,14 @@ class PartnerController extends Controller
                     return ($valorLiquidoA > $valorLiquidoB) ? -1 : 1;
                 });
             }
-    
+
             // Retorna o array agrupado por parceiro
             return $groupedBalances;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
-    
+
 
     public function getByBancaAndDate(Request $request)
     {
@@ -694,25 +694,25 @@ class PartnerController extends Controller
 
         return response()->json($winners);
     }
-        
+
     public function getResultInMultiplePartners2(Request $request, $partner)
     {
         try {
             $data = $request->all();
             $totalPrizeAmount = 0; // Inicializa o valor total como zero
             $data_partner = Partner::findOrFail($partner);
-    
+
             // Ajuste para pesquisa por data
             $concurses = DB::connection($data_partner['connection'])
                 ->table('competitions')
                 ->whereDate('sort_date', '=', $data['number'])
                 ->pluck('id');
-    
+
             $draws = DB::connection($data_partner['connection'])
                 ->table('draws')
                 ->whereIn('competition_id', $concurses)
                 ->get();
-    
+
             foreach ($draws as $draw) {
                 if ($draw != null) {
                     $drawGames = DB::connection($data_partner['connection'])
@@ -721,32 +721,32 @@ class PartnerController extends Controller
                         ->where('checked', 1)
                         ->whereIn('id', explode(',', $draw->games))
                         ->get();
-    
+
                     foreach ($drawGames as $game) {
                         $totalPrizeAmount += $game->premio; // Acumula o valor do prêmio
                     }
                 }
             }
-    
+
             return $totalPrizeAmount; // Retorna o valor total somado
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
-    
-    
-    
-    
-    
 
-    
+
+
+
+
+
+
     public function getResultsBichao(Request $request)
     {
         try {
             $data = $request->all();
             $data_partner = Partner::findOrFail($data['partner']);
             $connection = $data_partner->connection;
-    
+
             // Consulta para buscar as informações na tabela bichao_games_vencedores
             $bichao_games_vencedores = DB::connection($connection)
                 ->table('bichao_games_vencedores')
@@ -764,9 +764,9 @@ class PartnerController extends Controller
                 ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
                 ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
                 ->whereDate('bichao_games_vencedores.created_at', '=', $data['date'])
-                ->where('bichao_games_vencedores.status', '=', 1) 
+                ->where('bichao_games_vencedores.status', '=', 1)
                 ->get();
-    
+
             return $bichao_games_vencedores;
         } catch (\Throwable $th) {
             throw new Exception($th);
@@ -779,7 +779,7 @@ class PartnerController extends Controller
             $data = $request->all();
             $data_partner = Partner::findOrFail($data['partner']);
             $connection = $data_partner->connection;
-    
+
             // Consulta para buscar as informações na tabela bichao_games_vencedores
             $bichao_games_vencedores = DB::connection($connection)
                 ->table('bichao_games_vencedores')
@@ -797,9 +797,9 @@ class PartnerController extends Controller
                 ->leftJoin('bichao_modalidades', 'bichao_games.modalidade_id', '=', 'bichao_modalidades.id')
                 ->leftJoin('bichao_horarios', 'bichao_games.horario_id', '=', 'bichao_horarios.id')
                 ->whereDate('bichao_games_vencedores.created_at', '=', $data['date'])
-                // ->where('bichao_games_vencedores.status', '=', 1) 
+                // ->where('bichao_games_vencedores.status', '=', 1)
                 ->get();
-    
+
             return $bichao_games_vencedores;
         } catch (\Throwable $th) {
             throw new Exception($th);
@@ -813,10 +813,10 @@ class PartnerController extends Controller
             'terno de dezena', 'terno de grupos', 'duque de dezena',
             'duque de grupo', 'quadra de grupos', 'quina de grupos', 'unidade'
         ];
-    
+
         // Converter a modalidade fornecida para minúsculas para garantir compatibilidade
         $modalidade = strtolower($modalidade);
-    
+
         // Verificar se a modalidade fornecida está presente no array de modalidades válidas
         if (in_array($modalidade, $modalidadesValidas)) {
             $game = $this->generateRandomGameForModalidade($modalidade);
@@ -825,7 +825,7 @@ class PartnerController extends Controller
             return response()->json(['error' => 'Modalidade não encontrada']);
         }
     }
-    
+
     private function generateRandomGameForModalidade($modalidade)
     {
         switch ($modalidade) {
@@ -885,53 +885,53 @@ class PartnerController extends Controller
                 return null; // Caso a modalidade não seja reconhecida
         }
     }
-    
-    
+
+
     public function distributePrizesBichao0(Request $request)
     {
         try {
             // Parâmetros extras
             $data = $request->all();
-    
-            $totalPrize = $data['premio']; 
-            $totalWinners = $data['ganhadores']; 
+
+            $totalPrize = $data['premio'];
+            $totalWinners = $data['ganhadores'];
 
             // Chama a função getResultsBichao para obter os resultados originais
             $originalResults = $this->getResultsBichao($request);
-    
+
             // Array de modalidades e bancas
             $modalidades = ['Milhar', 'Centena', 'Dezena', 'Grupo', 'Milhar/Centena', 'Terno de Dezena', 'Terno de Grupos', 'Duque de Dezena', 'Duque de Grupo', 'Quadra de Grupos', 'Quina de Grupos', 'Unidade'];
             $bancas = ['PTM-RIO', 'PT-RIO', 'PTV-RIO', 'PTN-RIO', 'CORUJA-RIO', 'PT-SP', 'BANDEIRANTES', 'PTN-SP', 'LOOK', 'ALVORADA', 'MINAS-DIA', 'MINAS-NOITE', 'BA', 'LOTEP', 'LBR', 'LOTECE', 'FEDERAL'];
-    
+
             // Array para armazenar os resultados combinados
             $combinedResults = [];
-    
+
             // Seleciona uma quantidade aleatória de pessoas
             $randomPeople = People::inRandomOrder()->limit($totalWinners)->get();
-    
+
             // Distribui o prêmio para cada ganhador
             foreach ($randomPeople as $person) {
                 // Modalidade aleatória
                 $modalidade = $modalidades[array_rand($modalidades)];
-    
+
                 // Banca aleatória
                 $banca = $bancas[array_rand($bancas)];
-    
+
                 // Adiciona o ganhador e o prêmio ao array de resultados
                 $combinedResults[] = [
                     'game_id' => mt_rand(10000, 99999), // Gera um número aleatório de 6 dígitos
-                    'valor_premio' => 'R$ ' . number_format($totalPrize / $totalWinners, 2, ',', '.'), 
-                    'game_1' => $this->generateRandomGame($modalidade), 
-                    'status' => 2, 
+                    'valor_premio' => 'R$ ' . number_format($totalPrize / $totalWinners, 2, ',', '.'),
+                    'game_1' => $this->generateRandomGame($modalidade),
+                    'status' => 2,
                     'banca' => $banca, // Banca aleatória
                     'client_full_name' => $person->first_name . ' ' . $person->last_name,
                     'modalidade_name' => $modalidade,
                 ];
             }
-    
+
             // Mescla os resultados originais com os novos resultados
             $mergedResults = array_merge($originalResults->toArray(), $combinedResults);
-    
+
             return $mergedResults;
         } catch (\Throwable $th) {
             throw new Exception($th);
@@ -943,24 +943,24 @@ class PartnerController extends Controller
         try {
             // Parâmetros extras
             $data = $request->all();
-    
+
             $totalPrize = floatval(str_replace(',', '.', str_replace('.', '', str_replace('R$ ', '', $data['premio']))));
             $totalWinners = $data['ganhadores'];
-    
+
             // Chama a função getResultsBichao para obter os resultados originais
             $originalResults = $this->getResultsBichao($request);
-    
+
             // Array de modalidades e bancas
             $modalidades = ['Milhar', 'Centena', 'Dezena', 'Grupo', 'Milhar/Centena', 'Terno de Dezena', 'Terno de Grupos', 'Duque de Dezena', 'Duque de Grupo', 'Quadra de Grupos', 'Quina de Grupos', 'Unidade'];
             $bancas = ['PTM-RIO', 'PT-RIO', 'PTV-RIO', 'PTN-RIO', 'CORUJA-RIO', 'PT-SP', 'BANDEIRANTES', 'PTN-SP', 'LOOK', 'ALVORADA', 'MINAS-DIA', 'MINAS-NOITE', 'BA', 'LOTEP', 'LBR', 'LOTECE', 'FEDERAL'];
-    
+
             // Array para armazenar os resultados combinados
             $combinedResults = [];
-    
-                
+
+
             // Seleciona uma quantidade aleatória de pessoas
             $randomPeople = People::inRandomOrder()->limit($totalWinners)->get();
-    
+
             // Distribui o prêmio para cada ganhador
             $remainingPrize = $totalPrize;
             foreach ($randomPeople as $key => $person) {
@@ -970,28 +970,28 @@ class PartnerController extends Controller
                 } else {
                     $prize = mt_rand(1, ceil($remainingPrize / ($totalWinners - $key)));
                 }
-    
+
                 $remainingPrize -= $prize; // Atualiza o valor do prêmio restante
-    
+
                 // Seleciona uma modalidade e banca aleatória
                 $modalidade = $modalidades[array_rand($modalidades)];
                 $banca = $bancas[array_rand($bancas)];
-    
+
                 // Adiciona o ganhador e o prêmio ao array de resultados
                 $combinedResults[] = [
                     'game_id' => mt_rand(10000, 99999), // Gera um número aleatório de 6 dígitos
                     'valor_premio' => 'R$ ' . number_format($prize, 2, ',', '.'), // Formata o valor do prêmio
                     'game_1' => $this->generateRandomGame($modalidade), // Modalidade aleatória
-                    'status' => 2, 
+                    'status' => 2,
                     'banca' => $banca, // Banca aleatória
                     'client_full_name' => $person->first_name . ' ' . $person->last_name,
                     'modalidade_name' => $modalidade,
                 ];
             }
-    
+
             // Mescla os resultados originais com os novos resultados
             $mergedResults = array_merge($originalResults->toArray(), $combinedResults);
-    
+
             return $mergedResults;
         } catch (\Throwable $th) {
             throw new Exception($th);
@@ -1003,7 +1003,7 @@ class PartnerController extends Controller
         // Supondo que $this->type_games($partner) retorne um JsonResponse
         $response = $this->type_games($partner);
         $typeGames = json_decode($response->getContent(), true); // Converte o JSON para um array associativo
-    
+
         $gameNames = [];
         switch ($gametype) {
             case 'loteria_brasileira':
@@ -1045,21 +1045,21 @@ class PartnerController extends Controller
             default:
                 return []; // Se o tipo de jogo não for encontrado, retorna um array vazio
         }
-    
+
         // Filtra os jogos baseados nos nomes fornecidos
         $filteredGames = array_filter($typeGames, function($game) use ($gameNames) {
             return in_array($game['name'], $gameNames);
         });
-    
+
         // Extrai os IDs dos jogos filtrados
         $gameIds = array_column($filteredGames, 'id');
-    
+
         return $gameIds; // Retorna os IDs dos jogos filtrados
     }
-    
-    
-    
-    
+
+
+
+
     public function getResultInMultiplePartners(Request $request)
     {
         try {
@@ -1073,24 +1073,24 @@ class PartnerController extends Controller
                 ->table('competitions')
                 ->whereDate('sort_date', '=', $data['number'])
                 ->pluck('id');
-    
+
             $draws = DB::connection($data_partner['connection'])
                 ->table('draws')
                 ->whereIn('competition_id', $concurses)
                 ->get();
-    
+
             $games = [];
-    
+
             foreach ($draws as $draw) {
                 if ($draw != null) {
                     $competition = DB::connection($data_partner['connection'])
                         ->table('competitions')
                         ->where('id', $draw->competition_id)
                         ->first();
-    
+
                     $numbers_draw = array_map('intval', explode(',', $draw->games));
                     $num_tickets = count($numbers_draw);
-    
+
                     $drawGamesQuery = DB::connection($data_partner['connection'])
                         ->table('games')
                         ->select([
@@ -1104,9 +1104,9 @@ class PartnerController extends Controller
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                         ->where('games.checked', 1)
                         ->whereIn('games.id', $numbers_draw);
-    
+
                     // Verifique se o parâmetro 'groupgame' está presente na requisição
-                    
+
                     if (isset($data['groupgame'])) {
                     // Verifica se loteria é brasileira e exclui os ids
                         if($data['groupgame'] == "loteria_brasileira"){
@@ -1116,19 +1116,19 @@ class PartnerController extends Controller
                         $gameIds = $this->getTypeIdGames($data['partner'],$data['groupgame']);
                         $drawGamesQuery->whereIn('games.type_game_id', $gameIds);}
                     }
-    
+
                     $drawGames = $drawGamesQuery->get();
-    
+
                     foreach ($drawGames as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets;
                         $game->premio_formatted = $this->formatMoney($game->premio);
-    
+
                         $games[] = $game;
                     }
                 }
             }
-    
+
             $winners = collect($games)
                 ->groupBy('game_name')
                 ->map(function ($group) {
@@ -1136,14 +1136,14 @@ class PartnerController extends Controller
                 })
                 ->collapse()
                 ->all();
-    
+
             $winners = $this->consolidateResultsByGameName($winners);
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
-    
+
     public function consolidateResultsByGameName($rawResults)
     {
         try {
@@ -1189,33 +1189,36 @@ class PartnerController extends Controller
     {
         try {
             $data = $request->all();
-    
+
             // Busca informações do parceiro
             $data_partner = Partner::findOrFail($data['partner']);
-    
+
+            $valorMaximo = $data_partner['min_value_autoaprovation'];
+            $partnerId = $data_partner['id'];
+
             // Busca os IDs das competições para a data especificada
             $competitionIds = DB::connection($data_partner['connection'])
                 ->table('competitions')
                 ->whereDate('sort_date', '=', $data['date'])
                 ->pluck('id');
-    
+
             // Busca os sorteios e os respectivos jogos de uma só vez, evitando múltiplas consultas
             $drawsGames = DB::connection($data_partner['connection'])
                 ->table('draws')
                 ->whereIn('competition_id', $competitionIds)
                 ->get();
-    
+
             $numbersDraw = $drawsGames->flatMap(function ($draw) {
                 return explode(',', $draw->games);
             })->unique()->all();
-    
+
             // Busca todos os jogos relacionados aos sorteios de uma vez
             $gamesInfo = DB::connection($data_partner['connection'])
                 ->table('games')
                 ->select([
-                    'games.id', 
-                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"), 
-                    'games.premio', 
+                    'games.id',
+                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"),
+                    'games.premio',
                     'games.status',
                     'games.random_game',
                     'type_games.name as game_name',
@@ -1228,14 +1231,22 @@ class PartnerController extends Controller
                 ->where('games.checked', 1)
                 ->where('games.status', 1)
                 ->get();
-    
+
+            foreach ( $gamesInfo as $i => $gi ) {
+                if ( $gi['premio'] <= $valorMaximo ) {
+                    unset($gamesInfo[$i]);
+
+                    $this->autoAprove($partnerId, $gi->id);
+                }
+            }
+
             // Processa os jogos para adicionar informações adicionais
             $processedGames = $gamesInfo->map(function ($game) {
                 $game->premio_formatted = $this->formatMoney($game->premio);
                 $game->random_game = $game->random_game == 1 ? 'Sim' : 'Não';
                 return $game;
             });
-    
+
             // Agrupa os jogos processados por nome do jogo e nome do cliente, e soma os prêmios
             $winners = $processedGames
                 ->groupBy(function ($item) {
@@ -1256,14 +1267,14 @@ class PartnerController extends Controller
                         'premio_formatted' => $this->formatMoney($sumPremio) // Formata a soma dos prêmios
                     ];
                 })->values()->all();
-    
+
             return $winners;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
-    
-    
+
+
     private function formatMoney($value)
     {
         return $value >= 1000 ? 'R$ ' . number_format($value, 2, ',', '.') : 'R$ ' . number_format($value, 2, ',', '.');
@@ -1273,10 +1284,10 @@ class PartnerController extends Controller
         $data = $request->all();
         $data_partner = Partner::findOrFail($data['partner']);
         $status = $data['status'];
-        
+
         $total_premio = 0;
         $client_id = null;
-        
+
         foreach ($data['ids'] as $id) {
             $data_game_winner = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->first();
 
@@ -1284,16 +1295,16 @@ class PartnerController extends Controller
                 // Obtém o game_id da tabela de vencedores
                 // Agora, busca os detalhes do jogo na tabela 'bichao_games' usando o game_id
                 $data_game = DB::connection($data_partner['connection'])->table('bichao_games')->where('id', $data_game_winner->game_id)->first();
-                
+
                 if($data_game) {
                     $total_premio += floatval($data_game_winner->valor_premio);
                     $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
                 }
             }
-            
+
             $game = DB::connection($data_partner['connection'])->table('bichao_games_vencedores')->where('game_id', $id)->update(['status' => $status]);
         }
-        
+
         if($total_premio > 0 && $client_id) {
             // Busca os detalhes do cliente na tabela 'clients' usando o client_id
             $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
@@ -1313,10 +1324,10 @@ class PartnerController extends Controller
                 }
             }
         }
-        
+
         return response()->json(["message" => "Alteração finalizada com sucesso!"], 200);
     }
-    
+
 
 
 
@@ -1324,21 +1335,21 @@ class PartnerController extends Controller
     public function updateStatus(Request $request) {
         $data = $request->all();
         $data_partner = Partner::findOrFail($data['partner']);
-        
+
         $total_premio = 0;
         $client_id = null;
-        
+
         foreach ($data['id'] as $id) {
             $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $id)->first();
-            
+
             if($data['status'] == 2 && $data_game) {
                 $total_premio += floatval($data_game->premio);
                 $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
             }
-            
+
             $game = DB::connection($data_partner['connection'])->table('games')->where('id', $id)->update(['status' => $data['status']]);
         }
-        
+
         if($total_premio > 0 && $client_id) {
             $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
             if($client_data) {
@@ -1356,10 +1367,10 @@ class PartnerController extends Controller
                 }
             }
         }
-        
+
         return response()->json(["message" => "Alteração finalizada com sucesso!"], 200);
     }
-    
+
 
 
     private function getAllAvailableGameNames()
@@ -1370,7 +1381,7 @@ class PartnerController extends Controller
     }
 
     private function getGameName($partnerId, $idgame)
-{   
+{
     // Recupera as informações do parceiro
     $data_partner = Partner::findOrFail($partnerId);
 
@@ -1386,7 +1397,7 @@ class PartnerController extends Controller
 
 
     public function distributePrizes(Request $request)
-    {   
+    {
         try {
 
             $data = $request->all();
@@ -1401,24 +1412,24 @@ class PartnerController extends Controller
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
-    
+
             $distributionFactors = $this->generatePercentages($numberOfPeople);
-    
+
             $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
-    
+
             $winnersList = [];
-    
+
             $winners = $winners->sortByDesc(function ($winner) {
                 return $winner->premio;
             });
-    
+
             $resultInMultiplePartners = $this->getResultInMultiplePartners($request);
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-            
-            
+
+
             $allGameNames = [];
-    
-            
+
+
             if (empty($resultInMultiplePartners)) {
                 // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
                 $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
@@ -1428,19 +1439,19 @@ class PartnerController extends Controller
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
                     $allGameNames[] = $gameName;
-    
+
                     $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                     $num_tickets = $result['num_tickets'] ?? null;
-    
+
                     foreach ($winners as $key => $winner) {
                         // Check if the current winner is associated with the current game_name
                         if ($winner->game_name === $gameName) {
                             $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
-    
+
                             $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
                             $winnerStatus = rand(1, 3);
                             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-    
+
                             $winnersList[] = [
                                 'id' => $winnerId,
                                 'name' => $winnerFullName,
@@ -1455,7 +1466,7 @@ class PartnerController extends Controller
                     }
                 }
             }
-    
+
             // Adicione ganhadores fictícios para cada nome de jogo único
             $uniqueGameNames = array_unique($allGameNames);
             $gmname = $this->getGameName($partnerId,$idgame); // Implemente esta função conforme necessário
@@ -1464,11 +1475,11 @@ class PartnerController extends Controller
                 $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
-    
+
             $mergedResults = array_merge($resultInMultiplePartners, $winnersList);
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
             $mergedResults = $this->organizarPorCategoria($mergedResults);
-    
+
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
             throw new Exception($th);
@@ -1483,27 +1494,27 @@ class PartnerController extends Controller
             $listaBase = $request->winners2;
             $listaBase2 = $request->winners3;
 
-    
+
             if ($numberOfPeople <= 0) {
                 return response()->json(['message' => 'Número de pessoas deve ser maior que 0'], 422);
             }
-            
+
 
             $distributionFactors = $this->generatePercentages($numberOfPeople);
-    
+
             $winners = People::inRandomOrder()->limit($numberOfPeople)->get();
-    
+
             $winnersList = [];
-    
+
             $winners = $winners->sortByDesc(function ($winner) {
                 return $winner->premio;
             });
-    
+
             $resultInMultiplePartners = $listaBase;
             $resultInMultiplePartners = array_values(array_filter($resultInMultiplePartners));
-            
+
             $allGameNames = [];
-    
+
             if (empty($resultInMultiplePartners)) {
                 // Se não houver ganhadores previamente, obtenha todos os nomes de jogos disponíveis
                 $allGameNames = $this->getAllAvailableGameNames(); // Implemente esta função conforme necessário
@@ -1513,19 +1524,19 @@ class PartnerController extends Controller
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
                     $allGameNames[] = $gameName;
-    
+
                     $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                     $num_tickets = $result['num_tickets'] ?? null;
-    
+
                     foreach ($winners as $key => $winner) {
                         // Check if the current winner is associated with the current game_name
                         if ($winner->game_name === $gameName) {
                             $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
-    
+
                             $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
                             $winnerStatus = rand(1, 3);
                             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-    
+
                             $winnersList[] = [
                                 'id' => $winnerId,
                                 'name' => $winnerFullName,
@@ -1540,19 +1551,19 @@ class PartnerController extends Controller
                     }
                 }
             }
-    
+
             // Adicione ganhadores fictícios para cada nome de jogo único
             $uniqueGameNames = array_unique($allGameNames);
             foreach ($uniqueGameNames as $gameName) {
                 $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
-            
+
             $mergedResults = null;
             $mergedResults = array_merge($listaBase2, $winnersList);
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
             $mergedResults = $this->organizarPorCategoria($mergedResults);
-            
+
 
 
             return response()->json($mergedResults, 200);
@@ -1560,39 +1571,39 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
-    
+
     private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
     {
         // Chamar a função para gerar os percentuais
         $percentages = $this->generatePercentages($numberOfWinners);
-    
+
         $fakeWinnersList = [];
         $remainingPercent = 100;
-    
+
         for ($i = 0; $i < $numberOfWinners; $i++) {
             $fakeWinner = People::inRandomOrder()->first();
             $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
-    
+
             // Usar o percentual da lista gerada
             $percentual = $percentages[$i];
-    
+
             $winnerPrize = round($totalAmount * ($percentual / 100));
-    
+
             // Verificar se o nome já está presente na mesma modalidade
             $existingNames = array_column($fakeWinnersList, 'name');
-    
+
             while (in_array($fakeWinnerFullName, $existingNames)) {
                 // Escolher um novo vencedor se o nome já estiver presente
                 $fakeWinner = People::inRandomOrder()->first();
                 $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
             }
-    
+
             // Adicionar o nome à lista de nomes já presentes
             $existingNames[] = $fakeWinnerFullName;
-    
+
             $winnerStatus = rand(1, 3);
             $winnerId = str_pad(rand(1, 9999), 5, '0', STR_PAD_LEFT);
-    
+
             $fakeWinnersList[] = [
                 'id' => $winnerId,
                 'name' => $fakeWinnerFullName,
@@ -1606,17 +1617,17 @@ class PartnerController extends Controller
                 'premio_formatted' => $this->formatMoney($winnerPrize),
             ];
         }
-    
+
         // Verificar se a soma dos percentuais é realmente 100%
         $sumOfPercentages = array_sum($percentages);
         if ($sumOfPercentages != 100) {
             // Se não for 100%, ajustar o último percentual para compensar
             $fakeWinnersList[count($fakeWinnersList) - 1]['percentual'] += (100 - $sumOfPercentages);
         }
-    
+
         return $fakeWinnersList;
     }
-    
+
 
     public function generatePercentages($numberOfWinners)
     {
@@ -1635,7 +1646,7 @@ class PartnerController extends Controller
 
         return $normalizedPercentages;
     }
-    
+
     public function organizarPorCategoria($resultados)
     {
         // Ordenar os resultados por game_name
@@ -1645,7 +1656,7 @@ class PartnerController extends Controller
 
         return $resultados;
     }
-    
+
 
     public function listCompetitions(Request $request)
     {
@@ -1757,14 +1768,14 @@ class PartnerController extends Controller
             throw new Exception($th);
         }
     }
-    
+
 
     public function updateWinners($data)
     {
         try {
             foreach ($data['partners'] as $partnerId) {
                 $data_partner = Partner::findOrFail($partnerId);
-    
+
                 foreach ($data['competitions'] as $competitionId) {
                     // Encontrar números na tabela de draws
                     $drawNumbers = DB::connection($data_partner->connection)
@@ -1772,12 +1783,12 @@ class PartnerController extends Controller
                         ->where('competition_id', $competitionId)
                         ->pluck('numbers')
                         ->toArray();
-    
+
                     // Converter as strings de números em arrays
                     $drawNumbersArrays = array_map(function ($numbers) {
                         return explode(',', $numbers);
                     }, $drawNumbers);
-    
+
                     // Encontrar jogos na tabela de games que contenham todos os números
                     $matchingGames = DB::connection($data_partner->connection)
                         ->table('games')
@@ -1793,10 +1804,10 @@ class PartnerController extends Controller
                             }
                         })
                         ->get();
-    
+
                     // Retornar os IDs dos jogos encontrados
                     $gameIds = $matchingGames->pluck('id')->toArray();
-    
+
                     // Atualizar os valores na tabela de draws
                     DB::connection($data_partner->connection)
                         ->table('draws')
@@ -1804,7 +1815,7 @@ class PartnerController extends Controller
                         ->update(['games' => implode(',', $gameIds)]);
                 }
             }
-    
+
             return response()->json(['message' => 'Vencedores Atualizados.'], 200);
         } catch (\Throwable $th) {
             // Lida com a exceção aqui
@@ -1813,4 +1824,105 @@ class PartnerController extends Controller
     }
 
 
+    public function getPartnersToPaytmentManagment(Request $request)
+    {
+        set_time_limit(1200);
+
+        try {
+            if($request->has('ids')) {
+                $partnerIds = explode(',', $request->input('ids'));
+                $partners = Partner::whereIn('id', $partnerIds)->get();
+            } else {
+                $partners = Partner::get();
+            }
+
+
+
+            foreach ( $partners as $i => $v ) {
+                $banca = DB::connection($v['connection'])
+                    ->table('games')
+                    ->where('status', '4'); // pagamentos automaticos
+
+                if( $request->has('date') ) {
+                    $banca->whereDate('created_at', $request->input('date'));
+                }
+
+                $banca = $banca->select(DB::raw('SUM(premio) as premio, COUNT(*) total_pagamentos'))->first();
+
+                $banca->premio = $banca->premio ?? 0;
+                $banca->total_pagamentos = $banca->total_pagamentos ?? 0;
+
+                if( $banca->premio == 0 && $banca->total_pagamentos == 0 ) {
+                    $partners[$i]['media'] = '0,00';
+                } else {
+                    $partners[$i]['media'] = number_format(($banca->premio / $banca->total_pagamentos), 2, ',', '.') ?? '0,00';
+                }
+
+                $partners[$i]['min_value_autoaprovation'] = number_format($v['min_value_autoaprovation'], 2, ',', '.') ?? '0,00';
+                $partners[$i]['pagamento_total'] = number_format($banca->premio, 2, ',', '.') ?? '0,00';
+            }
+
+            return response()->json($partners);
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        }
+
+    }
+
+    public function saveValorToAutoAprovation(Request $request, $banca_id)
+    {
+        try {
+            $request->validate([
+                'valor' => 'required'
+            ]);
+
+            $valorNovo = $request->input('valor');
+            $valorNovo = str_replace('.', '', $valorNovo);
+            $valorNovo = str_replace(',', '.', $valorNovo);
+
+            Partner::where('id', $banca_id)
+                ->update([
+                    'min_value_autoaprovation' => $valorNovo
+                ]);
+
+            return response()->json(['msg' => 'Valor alterado com sucesso']);
+        } catch ( Exception $e ) {
+            return response()->json(['msg' => 'Ocorreu um erro ao alterar o valor na banca solicitada', 'details' => $e->getMessage()]);
+        }
+    }
+
+    public function autoAprove($partner, $game_id) {
+        $data_partner = Partner::findOrFail($partner);
+
+        $total_premio = 0;
+        $client_id = null;
+
+        $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $game_id)->first();
+
+        $total_premio += floatval($data_game->premio);
+
+        $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
+
+        $game = DB::connection($data_partner['connection'])->table('games')->where('id', $game_id)->update(['status' => 4]);
+
+        if($total_premio > 0 && $client_id) {
+            $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
+            if($client_data) {
+                $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
+                if($user_data) {
+                    $new_value = $total_premio + floatval($user_data->available_withdraw);
+                    $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                } else {
+                    // Atualiza o usuário padrão se o usuário específico não for encontrado
+                    $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                    if($user_data_default) {
+                        $new_value = $total_premio + floatval($user_data_default->available_withdraw);
+                        $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
 }
