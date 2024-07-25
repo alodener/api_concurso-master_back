@@ -1925,4 +1925,32 @@ class PartnerController extends Controller
 
         return true;
     }
+
+    public function gerarPDFAutoAprovacoes(Request $request)
+    {
+        $requestData = $request->all();
+
+        $date = Carbon::createFromFormat('Y-m-d', $requestData['date'])->format('d/m/Y');
+
+        $total = 0;
+        foreach ( $requestData['partners'] as $a ) {
+            $valor = str_replace('.', '', $a['pagamento_total']);
+            $valor = str_replace(',', '.', $valor);
+
+            $total += $valor;
+        }
+        $total = number_format($total, 2, ',', '.');
+
+        $data = [
+            'title' => $date, // Título com a data formatada
+            'partners' => $requestData['partners'],
+            'pagamento' => $total
+        ];
+
+        // Carregar a visualização do PDF com os dados
+        $pdf = PDF::loadView('pdf.autoAprovacoes', $data);
+
+        // Fazer o download do PDF
+        return $pdf->download('relatorio_financeiro.pdf');
+    }
 }
