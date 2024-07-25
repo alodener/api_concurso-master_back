@@ -1228,14 +1228,14 @@ class PartnerController extends Controller
                 ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                 ->join('competitions', 'competitions.id', '=', 'games.competition_id')
                 ->whereIn('games.id', $numbersDraw)
-                ->where('games.checked', 1)
-                ->where('games.status', 1)
+                // ->where('games.checked', 1)
+                ->whereOr('games.status', 1)
+                ->whereOr('games.status', 4)
                 ->get();
 
             foreach ( $gamesInfo as $i => $gi ) {
-                if ( $gi['premio'] <= $valorMaximo ) {
-                    unset($gamesInfo[$i]);
-
+                if ( $gi->premio <= $valorMaximo  && $gi->status != 4 ) {
+                    $gamesInfo[$i]->status = 4;
                     $this->autoAprove($partnerId, $gi->id);
                 }
             }
@@ -1257,14 +1257,14 @@ class PartnerController extends Controller
                     $first = $group->first();
                     $sumPremio = $group->sum('premio');
                     return [
-                        'id' => $group->pluck('id')->all(), // Todos os IDs como array
+                        'id' => $group->pluck('id')->all(),
                         'name' => $first->name,
                         'premio' => $sumPremio,
                         'status' => $first->status,
                         'random_game' => $first->random_game,
                         'game_name' => $first->game_name,
                         'sort_date' => $first->sort_date,
-                        'premio_formatted' => $this->formatMoney($sumPremio) // Formata a soma dos prêmios
+                        'premio_formatted' => $this->formatMoney($sumPremio)
                     ];
                 })->values()->all();
 
@@ -1829,6 +1829,8 @@ class PartnerController extends Controller
         set_time_limit(1200);
 
         try {
+            $data = $request->all();
+
             if($request->has('ids')) {
                 $partnerIds = explode(',', $request->input('ids'));
                 $partners = Partner::whereIn('id', $partnerIds)->get();
@@ -1836,22 +1838,20 @@ class PartnerController extends Controller
                 $partners = Partner::get();
             }
 
-
-
             foreach ( $partners as $i => $v ) {
                 $banca = DB::connection($v['connection'])
                     ->table('games')
                     ->where('status', '4'); // pagamentos automaticos
 
-                if( $request->has('date') ) {
-                    $banca->whereDate('created_at', $request->input('date'));
+                if($data['date']) {
+                    $banca = $banca->whereDate('created_at', $data['date']);
                 }
 
                 $banca = $banca->select(DB::raw('SUM(premio) as premio, COUNT(*) total_pagamentos'))->first();
 
                 $banca->premio = $banca->premio ?? 0;
                 $banca->total_pagamentos = $banca->total_pagamentos ?? 0;
-
+                
                 if( $banca->premio == 0 && $banca->total_pagamentos == 0 ) {
                     $partners[$i]['media'] = '0,00';
                 } else {
