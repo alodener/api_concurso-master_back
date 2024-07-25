@@ -28,7 +28,7 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::middleware('auth')->prefix('apostas-feitas')->group(function () {
-   Route::post('/show', [ApostasFeitasController::class, 'filter']);
+    Route::post('/show', [ApostasFeitasController::class, 'filter']);
 });
 
 Route::middleware('auth')->prefix('users')->group(function () {
@@ -63,20 +63,23 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::post('/pdf', [PartnerController::class, 'gerarPDF']);
     Route::post('/winners-lists', [PartnerController::class, 'storeListWinners']);
     Route::get('/winners-lists', [PartnerController::class, 'getWinners']);  // Lista das bancas!!
-    
+
     Route::put('/update-status-bichao', [PartnerController::class, 'updateStatusBichao']);
     Route::post('/update-draw-numbers', [PartnerController::class, 'updateDrawNumbers']);
-    Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games'])->name('modalidades');;
+    Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games'])->name('modalidades');
 
+    Route::get('/auto-aprovation', [PartnerController::class, 'getPartnersToPaytmentManagment']);
+    Route::post('/auto-aprovation/save/{banca_id}', [PartnerController::class, 'saveValorToAutoAprovation']);
+    Route::post('/auto-aprovation/pdf', [PartnerController::class, 'gerarPDFAutoAprovacoes']);
 });
 
 Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
 
-Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']); // Traz a lista dos objetos!! Já tenho a função]
+Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']); // Traz a lista dos objetos!! Já tenho a função
 Route::get('/winners-list2', [PartnerController::class, 'getWinnersListByBancaAndHours']); // Traz a lista dos objetos!! Já tenho a função
 
 Route::get('/copia-e-cola', [PartnerController::class, 'formatTableContentFromRequest']); //Traz a lista para conpiar e colar
 
-Route::get('/system', [PartnerController::class, 'processarParceiros']); 
+Route::get('/system', [PartnerController::class, 'processarParceiros']);
 Route::get('/modalidades/{partnerId}', [PartnerController::class, 'type_games']);
