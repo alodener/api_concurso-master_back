@@ -14,8 +14,7 @@ use Illuminate\Support\Facades\DB;
 use PhpParser\Node\Stmt\Return_;
 use App\Models\People;
 use App\Models\WinnersList;
-
-
+use DateTime;
 
 class PartnerController extends Controller
 {
@@ -1185,6 +1184,7 @@ class PartnerController extends Controller
         }
     }
 
+
     public function aprovePrize(Request $request)
     {
         try {
@@ -1192,7 +1192,6 @@ class PartnerController extends Controller
 
             // Busca informações do parceiro
             $data_partner = Partner::findOrFail($data['partner']);
-
             $valorMaximo = $data_partner['min_value_autoaprovation'];
             $partnerId = $data_partner['id'];
 
@@ -1228,13 +1227,18 @@ class PartnerController extends Controller
                 ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                 ->join('competitions', 'competitions.id', '=', 'games.competition_id')
                 ->whereIn('games.id', $numbersDraw)
-                // ->where('games.checked', 1)
-                ->whereOr('games.status', 1)
-                ->whereOr('games.status', 4)
+                ->where('games.checked', 1)
+                ->where(function($query) {
+                    $query->where('games.status', 1)
+                        ->orWhere('games.status', 4);
+                })
                 ->get();
 
             foreach ( $gamesInfo as $i => $gi ) {
-                if ( $gi->premio <= $valorMaximo  && $gi->status != 4 ) {
+                $sortDate = new DateTime($gi->sort_date);
+                $targetDate = new DateTime('2024-07-30'); // Data inicial para validar pagamentos automaticos
+
+                if ( $gi->premio <= $valorMaximo && $gi->status != 4 && $sortDate >= $targetDate ) {
                     $gamesInfo[$i]->status = 4;
                     $this->autoAprove($partnerId, $gi->id);
                 }
@@ -1851,7 +1855,7 @@ class PartnerController extends Controller
 
                 $banca->premio = $banca->premio ?? 0;
                 $banca->total_pagamentos = $banca->total_pagamentos ?? 0;
-                
+
                 if( $banca->premio == 0 && $banca->total_pagamentos == 0 ) {
                     $partners[$i]['media'] = '0,00';
                 } else {
@@ -1952,5 +1956,49 @@ class PartnerController extends Controller
 
         // Fazer o download do PDF
         return $pdf->download('relatorio_financeiro.pdf');
+    }
+
+    public function corrigirSaldos()
+    {
+        $partners = Partner::get();
+
+        foreach ( $partners as $i => $v ) {
+            $banca = DB::connection($v['connection'])
+                ->table('games as g')
+                ->select(
+                    'g.client_id',
+                    DB::raw('SUM(g.premio) as valor_indevido'),
+                    'u.available_withdraw as valor_carteira_atual',
+                    DB::raw('(u.available_withdraw - SUM(g.premio)) as carteira_novo_valor'),
+                    'u.id as id_usuario',
+                )
+                ->leftJoin('clients as c', 'c.id', '=', 'g.client_id')
+                ->leftJoin('users as u', 'u.email', '=', 'c.email')
+                ->where('g.status', 4)
+                ->groupBy('g.client_id')
+                ->get();// pagamentos automaticos
+
+
+            if( count($banca) > 0 ) {
+                foreach ( $banca as $b ) {
+                    $novoValor = $b->carteira_novo_valor;
+                    $idUsuario = $b->id_usuario;
+
+                    DB::connection($v['connection'])
+                        ->table('users')
+                        ->where('id', $idUsuario)
+                        ->update([
+                            'available_withdraw' => $novoValor
+                        ]);
+                }
+
+                DB::connection($v['connection'])
+                    ->table('games')
+                    ->where('status', 4)
+                    ->update([
+                        'status' => 1
+                    ]);
+            }
+        }
     }
 }
