@@ -73,6 +73,8 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::post('/auto-aprovation/pdf', [PartnerController::class, 'gerarPDFAutoAprovacoes']);
 });
 
+Route::get('/auto-aprovation/corrigir-saldos', [PartnerController::class, 'corrigirSaldos']);
+
 Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
 
