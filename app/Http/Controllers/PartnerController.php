@@ -1892,13 +1892,15 @@ class PartnerController extends Controller
             foreach ( $partners as $i => $v ) {
                 $banca = DB::connection($v['connection'])
                     ->table('games')
-                    ->where('status', '4'); // pagamentos automaticos
+                    ->leftJoin('competitions', 'games.competition_id', '=', 'competitions.id')
+                    ->where('games.status', '4'); // pagamentos automaticos
 
-                if($data['date']) {
-                    $banca = $banca->whereDate('created_at', $data['date']);
+                if (isset($data['date']) && $data['date']) {
+                    $banca = $banca->whereDate('competitions.sort_date', $data['date']);
                 }
 
-                $banca = $banca->select(DB::raw('SUM(premio) as premio, COUNT(*) total_pagamentos'))->first();
+                // Corrigindo a sintaxe do COUNT e adicionando o SUM
+                $banca = $banca->select(DB::raw('SUM(games.premio) as premio, COUNT(*) as total_pagamentos'))->first();
 
                 $banca->premio = $banca->premio ?? 0;
                 $banca->total_pagamentos = $banca->total_pagamentos ?? 0;
