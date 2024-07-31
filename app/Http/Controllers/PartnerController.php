@@ -1238,7 +1238,7 @@ class PartnerController extends Controller
                 $sortDate = new DateTime($gi->sort_date);
                 $targetDate = new DateTime('2024-07-30'); // Data inicial para validar pagamentos automaticos
 
-                if ( $gi->premio <= $valorMaximo && $gi->status != 4 && $sortDate >= $targetDate ) {
+                if ( $gi->premio <= $valorMaximo && $gi->status != 4 && $sortDate >= $targetDate && $gi->random_game == 0 ) {
                     $gamesInfo[$i]->status = 4;
                     $this->autoAprove($partnerId, $gi->id);
                 }
