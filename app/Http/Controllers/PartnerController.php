@@ -1195,6 +1195,35 @@ class PartnerController extends Controller
             $valorMaximo = $data_partner['min_value_autoaprovation'];
             $partnerId = $data_partner['id'];
 
+            $gamesToAutoAprove = DB::connection($data_partner['connection'])
+                ->table('games')
+                ->select([
+                    'games.id',
+                    'games.premio',
+                    'games.status',
+                    'competitions.sort_date',
+                    'games.random_game'
+                ])
+                ->join('clients', 'clients.id', '=', 'games.client_id')
+                ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
+                ->join('competitions', 'competitions.id', '=', 'games.competition_id')
+                ->where(function($query) {
+                    $query->where('games.status', 1);
+                })
+                ->where('games.premio', '<=', $valorMaximo)
+                ->where('games.random_game', '=', '0')
+                ->whereDate('competitions.sort_date', '>=', '2024-07-30')
+                ->get();
+
+            foreach ( $gamesToAutoAprove as $i => $gi ) {
+                $sortDate = new DateTime($gi->sort_date);
+                $targetDate = new DateTime('2024-07-30'); // Data inicial para validar pagamentos automaticos
+
+                if ( $gi->premio <= $valorMaximo && $gi->status != 4 && $sortDate >= $targetDate && $gi->random_game == 0 ) {
+                    $this->autoAprove($partnerId, $gi->id);
+                }
+            }
+
             // Busca os IDs das competições para a data especificada
             $competitionIds = DB::connection($data_partner['connection'])
                 ->table('competitions')
@@ -1234,15 +1263,6 @@ class PartnerController extends Controller
                 })
                 ->get();
 
-            foreach ( $gamesInfo as $i => $gi ) {
-                $sortDate = new DateTime($gi->sort_date);
-                $targetDate = new DateTime('2024-07-30'); // Data inicial para validar pagamentos automaticos
-
-                if ( $gi->premio <= $valorMaximo && $gi->status != 4 && $sortDate >= $targetDate && $gi->random_game == 0 ) {
-                    $gamesInfo[$i]->status = 4;
-                    $this->autoAprove($partnerId, $gi->id);
-                }
-            }
 
             // Processa os jogos para adicionar informações adicionais
             $processedGames = $gamesInfo->map(function ($game) {
