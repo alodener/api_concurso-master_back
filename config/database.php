@@ -349,7 +349,7 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
-    'telesorteklaus' => [
+    'telesortenet' => [
             'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
             'host' => '92.204.144.50',
