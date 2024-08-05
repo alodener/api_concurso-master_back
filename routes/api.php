@@ -44,7 +44,6 @@ Route::middleware('auth')->prefix('logs')->group(function () {
 });
 
 
-
 Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/', [PartnerController::class, 'index']);
     Route::post('/', [PartnerController::class, 'createGameInMultiplePartners']);
