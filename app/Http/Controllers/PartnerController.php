@@ -1988,8 +1988,20 @@ class PartnerController extends Controller
                 if($client_data) {
                     $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
                     if($user_data) {
-                        $new_value = $premio + floatval($user_data->available_withdraw);
-                        DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                        $old_value = floatval($user_data_default->available_withdraw);  // Recupera o valor antigo do saldo disponível
+                        $new_value = $total_premio + $old_value;
+                        $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+                            DB::connection($data_partner['connection'])->table('transact_balance')->insert([
+                            'user_id_sender' => $user_data_default->id,
+                            'user_id' => $user_data_default->id,
+                            'value' => $total_premio,
+                            'old_value' => $old_value,
+                            'value_a' => $new_value,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                            'type' => 'Premiacao de jogo loteria id: ' .  $game_id,
+                            'wallet' => 'Premiacao'
+                            ]);;
                     } else {
                         // Atualiza o usuário padrão se o usuário específico não for encontrado
                         $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
