@@ -1192,37 +1192,41 @@ class PartnerController extends Controller
 
             // Busca informações do parceiro
             $data_partner = Partner::findOrFail($data['partner']);
-            $valorMaximo = $data_partner['min_value_autoaprovation'];
-            $partnerId = $data_partner['id'];
+            $valorMaximo    = $data_partner['min_value_autoaprovation'];
+            $partnerId      = $data_partner['id'];
 
+
+
+            // => Inicio Faz a auto aprovação do prêmio
             $gamesToAutoAprove = DB::connection($data_partner['connection'])
-                ->table('games')
+                ->table('draws')
                 ->select([
-                    'games.id',
-                    'games.premio',
-                    'games.status',
+                    'draws.id',
                     'competitions.sort_date',
-                    'games.random_game'
+                    DB::raw('SUM(games.premio) as total_premio')
                 ])
-                ->join('clients', 'clients.id', '=', 'games.client_id')
-                ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
-                ->join('competitions', 'competitions.id', '=', 'games.competition_id')
-                ->where(function($query) {
-                    $query->where('games.status', 1);
+                ->join('competitions', 'competitions.id', '=', 'draws.competition_id')
+                ->join('games', function($join) {
+                    $join->whereRaw("FIND_IN_SET(games.id, draws.games)");
                 })
-                ->where('games.premio', '<=', $valorMaximo)
+                ->where('games.status', 1)
                 ->where('games.random_game', '=', '0')
                 ->whereDate('competitions.sort_date', '>=', '2024-07-30')
+                ->groupBy('draws.id', 'competitions.sort_date')
+                ->having('total_premio', '<=', $valorMaximo)
                 ->get();
 
             foreach ( $gamesToAutoAprove as $i => $gi ) {
                 $sortDate = new DateTime($gi->sort_date);
                 $targetDate = new DateTime('2024-07-30'); // Data inicial para validar pagamentos automaticos
 
-                if ( $gi->premio <= $valorMaximo && $gi->status != 4 && $sortDate >= $targetDate && $gi->random_game == 0 ) {
+                if ( $gi->total_premio <= $valorMaximo && $sortDate >= $targetDate ) {
                     $this->autoAprove($partnerId, $gi->id);
                 }
             }
+            // => Fim da auto aprovação do prêmio
+
+
 
             // Busca os IDs das competições para a data especificada
             $competitionIds = DB::connection($data_partner['connection'])
@@ -1964,33 +1968,35 @@ class PartnerController extends Controller
         }
     }
 
-    public function autoAprove($partner, $game_id) {
+    public function autoAprove($partner, $draw_id) {
         $data_partner = Partner::findOrFail($partner);
-
-        $total_premio = 0;
         $client_id = null;
 
-        $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $game_id)->first();
+        $games = DB::connection($data_partner['connection'])->table('draws')->where('id', $draw_id)->first()->games;
 
-        $total_premio += floatval($data_game->premio);
+        $games = explode(',', $games);
 
-        $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
+        foreach ( $games as $g ) {
+            DB::connection($data_partner['connection'])->table('games')->where('id', $g)->update(['status' => 4]);
 
-        $game = DB::connection($data_partner['connection'])->table('games')->where('id', $game_id)->update(['status' => 4]);
+            $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $g)->first();
+            $client_id = $data_game->client_id;
+            $premio = $data_game->premio;
 
-        if($total_premio > 0 && $client_id) {
-            $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
-            if($client_data) {
-                $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
-                if($user_data) {
-                    $new_value = $total_premio + floatval($user_data->available_withdraw);
-                    $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
-                } else {
-                    // Atualiza o usuário padrão se o usuário específico não for encontrado
-                    $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
-                    if($user_data_default) {
-                        $new_value = $total_premio + floatval($user_data_default->available_withdraw);
-                        $user_update = DB::connection($data_partner['connection'])->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+            if($premio > 0 && $client_id) {
+                $client_data = DB::connection($data_partner['connection'])->table('clients')->find($client_id);
+                if($client_data) {
+                    $user_data = DB::connection($data_partner['connection'])->table('users')->where('email', $client_data->email)->first();
+                    if($user_data) {
+                        $new_value = $premio + floatval($user_data->available_withdraw);
+                        DB::connection($data_partner['connection'])->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                    } else {
+                        // Atualiza o usuário padrão se o usuário específico não for encontrado
+                        $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                        if($user_data_default) {
+                            $new_value = $premio + floatval($user_data_default->available_withdraw);
+                            DB::connection($data_partner['connection'])->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+                        }
                     }
                 }
             }
