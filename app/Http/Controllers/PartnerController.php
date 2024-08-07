@@ -1187,8 +1187,6 @@ class PartnerController extends Controller
 
     public function aprovePrize(Request $request)
     {
-        set_time_limit(60);
-
         try {
             $data = $request->all();
 
