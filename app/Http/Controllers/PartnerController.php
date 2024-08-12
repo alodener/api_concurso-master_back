@@ -1190,7 +1190,7 @@ class PartnerController extends Controller
         try {
             $data = $request->all();
 
-            if(!$data['partner']) {
+            if(!isset($data['partner'])) {
                 throw new Exception("Nenhuma banca informada");
             }
 
@@ -1231,19 +1231,45 @@ class PartnerController extends Controller
                     ->table('games')
                     ->select([
                         DB::raw('SUM(games.premio) as total_premio'),
-                        'games.id'
+                        'games.id',
+                        'games.client_id'
                     ])
                     ->whereIn('games.id', $gamesIds)
                     ->where('games.status', 1)
                     ->where('games.random_game', '=', '0')
                     ->groupBy('games.id')
-                    ->having('total_premio', '<=', $valorMaximo)
+                    // ->having('total_premio', '<=', $valorMaximo)
                     ->get();
 
+
                 if ($gamesToAutoAprove) {
-                    foreach ( $gamesToAutoAprove as $i => $gi ) {
-                        if ( $gi->total_premio <= $valorMaximo ) {
-                            $this->autoAprove($partnerId, $gi->id);
+                    $groupedByClientId = [];
+
+                    // Organiza os jogos agrupados por client_id
+                    foreach ($gamesToAutoAprove as $game) {
+                        if (!isset($groupedByClientId[$game->client_id])) {
+                            $groupedByClientId[$game->client_id] = [
+                                'total_premio' => 0,
+                                'games' => []
+                            ];
+                        }
+
+                        $groupedByClientId[$game->client_id]['total_premio'] += $game->total_premio;
+                        $groupedByClientId[$game->client_id]['games'][] = $game;
+                    }
+
+                    // Verifica se realmente tem jogos agrupados
+                    if( count($groupedByClientId)> 0 ) {
+                        foreach ( $groupedByClientId as $c ) {
+                            $valorPremio = $c['total_premio'];
+                            if( $valorPremio <= $valorMaximo ) {
+                                $games = $c['games'];
+                                if( count($games)> 0 ) {
+                                    foreach  ( $games  as $g ) {
+                                        $this->autoAprove($partnerId, $g->id);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
