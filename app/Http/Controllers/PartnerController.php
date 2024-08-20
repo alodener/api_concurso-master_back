@@ -537,6 +537,9 @@ class PartnerController extends Controller
                     }
                     $winners = null;
                 }
+
+                $partner_id = $data_partner['id'];
+                $this->autoAprovePrizeToPartner($partner_id);
             }
             return Response('Resultados enviados com sucesso', 200);
         } catch (\Throwable $th) {
@@ -1203,79 +1206,6 @@ class PartnerController extends Controller
             $data_partner = Partner::findOrFail($data['partner']);
             $valorMaximo    = $data_partner['min_value_autoaprovation'];
             $partnerId      = $data_partner['id'];
-
-
-
-            // => Inicio Faz a auto aprovação do prêmio
-            $draws = DB::connection($data_partner['connection'])
-                ->table('draws')
-                ->select(['draws.id', 'draws.games'])
-                ->join('competitions', 'competitions.id', '=', 'draws.competition_id')
-                ->where('draws.games', '!=', null)
-                ->whereDate('competitions.sort_date', '>=', '2024-07-30')
-                ->whereDate('competitions.sort_date', '=', $data_auto_aprovacao)
-                ->get();
-
-            $gamesIds = [];
-            foreach ($draws as $draw) {
-                $g_Ids = explode(',', $draw->games);
-                if($g_Ids) {
-                    foreach ( $g_Ids as $g ) {
-                        array_push($gamesIds, $g);
-                    }
-                }
-            }
-
-            if($gamesIds) {
-                $gamesToAutoAprove = DB::connection($data_partner['connection'])
-                    ->table('games')
-                    ->select([
-                        DB::raw('SUM(games.premio) as total_premio'),
-                        'games.id',
-                        'games.client_id'
-                    ])
-                    ->whereIn('games.id', $gamesIds)
-                    ->where('games.status', 1)
-                    ->where('games.random_game', '=', '0')
-                    ->groupBy('games.id')
-                    // ->having('total_premio', '<=', $valorMaximo)
-                    ->get();
-
-
-                if ($gamesToAutoAprove) {
-                    $groupedByClientId = [];
-
-                    // Organiza os jogos agrupados por client_id
-                    foreach ($gamesToAutoAprove as $game) {
-                        if (!isset($groupedByClientId[$game->client_id])) {
-                            $groupedByClientId[$game->client_id] = [
-                                'total_premio' => 0,
-                                'games' => []
-                            ];
-                        }
-
-                        $groupedByClientId[$game->client_id]['total_premio'] += $game->total_premio;
-                        $groupedByClientId[$game->client_id]['games'][] = $game;
-                    }
-
-                    // Verifica se realmente tem jogos agrupados
-                    if( count($groupedByClientId)> 0 ) {
-                        foreach ( $groupedByClientId as $c ) {
-                            $valorPremio = $c['total_premio'];
-                            if( $valorPremio <= $valorMaximo ) {
-                                $games = $c['games'];
-                                if( count($games)> 0 ) {
-                                    foreach  ( $games  as $g ) {
-                                        $this->autoAprove($partnerId, $g->id);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // => Fim da auto aprovação do prêmio
-
 
 
             // Busca os IDs das competições para a data especificada
@@ -2139,5 +2069,85 @@ class PartnerController extends Controller
                     ]);
             }
         }
+    }
+
+    public function autoAprovePrizeToPartner($partner_id) {
+        $data_auto_aprovacao = date('Y-m-d');
+        // $data_auto_aprovacao = '2024-07-30';
+
+        // Busca informações do parceiro
+        $data_partner = Partner::findOrFail($partner_id);
+        $valorMaximo    = $data_partner['min_value_autoaprovation'];
+        $partnerId      = $data_partner['id'];
+
+        // => Inicio Faz a auto aprovação do prêmio
+        $draws = DB::connection($data_partner['connection'])
+            ->table('draws')
+            ->select(['draws.id', 'draws.games'])
+            ->join('competitions', 'competitions.id', '=', 'draws.competition_id')
+            ->where('draws.games', '!=', null)
+            ->whereDate('competitions.sort_date', '>=', '2024-07-30')
+            ->whereDate('competitions.sort_date', '=', $data_auto_aprovacao)
+            ->get();
+
+        $gamesIds = [];
+        foreach ($draws as $draw) {
+            $g_Ids = explode(',', $draw->games);
+            if($g_Ids) {
+                foreach ( $g_Ids as $g ) {
+                    array_push($gamesIds, $g);
+                }
+            }
+        }
+
+        if($gamesIds) {
+            $gamesToAutoAprove = DB::connection($data_partner['connection'])
+                ->table('games')
+                ->select([
+                    DB::raw('SUM(games.premio) as total_premio'),
+                    'games.id',
+                    'games.client_id'
+                ])
+                ->whereIn('games.id', $gamesIds)
+                ->where('games.status', 1)
+                ->where('games.random_game', '=', '0')
+                ->groupBy('games.id')
+                // ->having('total_premio', '<=', $valorMaximo)
+                ->get();
+
+
+            if ($gamesToAutoAprove) {
+                $groupedByClientId = [];
+
+                // Organiza os jogos agrupados por client_id
+                foreach ($gamesToAutoAprove as $game) {
+                    if (!isset($groupedByClientId[$game->client_id])) {
+                        $groupedByClientId[$game->client_id] = [
+                            'total_premio' => 0,
+                            'games' => []
+                        ];
+                    }
+
+                    $groupedByClientId[$game->client_id]['total_premio'] += $game->total_premio;
+                    $groupedByClientId[$game->client_id]['games'][] = $game;
+                }
+
+                // Verifica se realmente tem jogos agrupados
+                if( count($groupedByClientId)> 0 ) {
+                    foreach ( $groupedByClientId as $c ) {
+                        $valorPremio = $c['total_premio'];
+                        if( $valorPremio <= $valorMaximo ) {
+                            $games = $c['games'];
+                            if( count($games)> 0 ) {
+                                foreach  ( $games  as $g ) {
+                                    $this->autoAprove($partnerId, $g->id);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // => Fim da auto aprovação do prêmio
     }
 }
