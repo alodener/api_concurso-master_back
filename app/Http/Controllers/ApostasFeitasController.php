@@ -39,7 +39,7 @@ class ApostasFeitasController extends Controller
                 $modalidade = $request->input('modalidade');
                 $inicio = $request->input('inicio') . " 00:00";
                 $fim = $request->input('fim') . " 23:59";
-                $bilheteId = intval($request->input('bilhete_id')); // Convertendo para inteiro
+                $bilheteId = ($request->input('bilhete_id')); // Convertendo para inteiro
 
                 // CODIGO ANTIGO
                 // $query = Apostas::whereBetween('created_at', [$inicio, $fim])
@@ -96,9 +96,13 @@ class ApostasFeitasController extends Controller
                             ->table('draws')
                             ->where('draws.type_game_id', $modalidade)
                             ->where('competitions.sort_date', '>=', $inicio)
-                            ->where('competitions.sort_date', '<=', $fim);
+                            ->where('competitions.sort_date', '<=', $fim)
+                            ->where('games.id', '!=', 'null');
 
                         if($bilheteId) {
+                            $bilheteId = explode(',', $bilheteId);
+                            if(!is_array($bilheteId)) $bilheteId = [$bilheteId];
+
                             $sql->whereIn('games.id', $bilheteId);
                         }
 
@@ -126,7 +130,7 @@ class ApostasFeitasController extends Controller
 
                         $usuariosDistintos = [];
 
-                        $a = $dados->each(function ($item) use (&$totalUsuarios, &$totalPremios, &$usuariosDistintos) {
+                        $dados->each(function ($item) use (&$totalUsuarios, &$totalPremios, &$usuariosDistintos) {
                             $premio = (float)str_replace(',', '.', $item->valor_premio);
                             $totalPremios += $premio;
                             if (!in_array($item->name, $usuariosDistintos)) {
