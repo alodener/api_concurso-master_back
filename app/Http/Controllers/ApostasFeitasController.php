@@ -25,93 +25,52 @@ class ApostasFeitasController extends Controller
 
                 $validator = Validator::make($data, [
                     'banca' => 'required|string',
-                    'modalidade' => 'required|integer',
-                    'inicio' => 'required|date',
-                    'fim' => 'required|date',
-                    'bilhete_id' => 'nullable|string', // Validando bilhete_id como string opcional
+                    'modalidade' => 'required',
+                    'data_sorteio' => 'required|date',
+                    'bilhete_id' => 'nullable|string',
                 ]);
 
                 if ($validator->fails()) {
                     return response()->json(['errors' => $validator->errors()], 422);
                 }
 
-                $banca = $request->input('banca');
-                $modalidade = $request->input('modalidade');
-                $inicio = $request->input('inicio') . " 00:00";
-                $fim = $request->input('fim') . " 23:59";
-                $bilheteId = ($request->input('bilhete_id')); // Convertendo para inteiro
-
-                // CODIGO ANTIGO
-                // $query = Apostas::whereBetween('created_at', [$inicio, $fim])
-                //     ->where('tipo_jogo', $banca)
-                //     ->where('jogo_id', $modalidade);
-                // // Adicionando a condição para o bilhete_id, se ele foi fornecido na requisição
-                // if ($bilheteId !== 0) { // Verifica se $bilheteId não é zero, que é o valor padrão de intval() se a conversão falhar
-                //     $query->where('bilhete', $bilheteId);
-                // }
-                // $data = $query->distinct()->get(['id', 'nome_usuario', 'usuario_id', 'tipo_jogo', 'jogo', 'valor_aposta', 'valor_premio', 'created_at', 'bilhete', 'concurso']);
-                // $dados = [];
-                // $valorTotal = 0;
-                // $totalBilhetes = 0;
-                // $totalUsuarios = [];
-                // $concursos = [];
-                // foreach ($data as $info) {
-                //     $valorTotal += floatval(str_replace(',', '.', $info->valor_aposta));
-                //     $totalBilhetes += 1;
-                //     if (!in_array($info->usuario_id, $totalUsuarios)) {
-                //         $totalUsuarios[] = $info->usuario_id;
-                //     }
-                //     if (!in_array($info->concurso, $concursos)) {
-                //         $concursos[] = $info->concurso;
-                //     }
-                //     $date = new DateTime($info->created_at);
-                //     $dados['info'][] = [
-                //         'id' => $info->id,
-                //         'nome' => $info->nome_usuario,
-                //         'tipo_jogo' => $info->tipo_jogo,
-                //         'jogo' => $info->jogo,
-                //         'valor' => number_format($info->valor_aposta, 2, ',', '.'),
-                //         'premio' => number_format($info->valor_premio, 2, ',', '.'),
-                //         'criacao' => $date->format('d/m/Y H:i:s'),
-                //         'numeros' => $info->bilhete,
-                //         'bilhete' => $info->jogo_id,
-                //         'concurso' => $info->concurso,
-                //         'usuario_id' => $info->usuario_id, // Adicionando usuario_id
-                //     ];
-                // }
-                // $dados['concursos'] = implode(', ', $concursos);
-                // $dados['totalUsuarios'] = count($totalUsuarios);
-                // $dados['totalBilhetes'] = $totalBilhetes;
-                // $dados['valorTotal'] = number_format($valorTotal, 2, ',', '.');
-
-                // return response()->json(['success' => true, 'data' => $dados], 200);
-
+                $banca          = $request->input('banca');
+                $modalidade     = $request->input('modalidade');
+                $data_sorteio   = $request->input('data_sorteio');
+                $bilheteId      = ($request->input('bilhete_id'));
 
                 $banca = explode(',', $banca);
                 if($banca) {
                     foreach ( $banca as $b ) {
                         $partner = Partner::findOrFail($b);
 
+                        $modalidade = explode(',', $modalidade);
+
+                        if(!is_array($modalidade)) $modalidade = [$modalidade];
+
                         $sql = DB::connection($partner->connection)
-                            ->table('draws')
-                            ->where('draws.type_game_id', $modalidade)
-                            ->where('competitions.sort_date', '>=', $inicio)
-                            ->where('competitions.sort_date', '<=', $fim)
-                            ->where('games.id', '!=', 'null');
+                            ->table('competitions')
+                            ->whereIn('competitions.type_game_id', $modalidade)
+                            ->whereDate('competitions.sort_date', $data_sorteio)
+                            ->where('games.id', '!=', 'null')
+                        ;
 
                         if($bilheteId) {
                             $bilheteId = explode(',', $bilheteId);
+
                             if(!is_array($bilheteId)) $bilheteId = [$bilheteId];
 
                             $sql->whereIn('games.id', $bilheteId);
                         }
 
-                        $dados = $sql->leftJoin('competitions', 'draws.competition_id', '=', 'competitions.id')
+                        $dados = $sql
+                            ->leftJoin('draws','competitions.id', '=', 'draws.competition_id')
                             ->leftJoin('games', 'competitions.id', '=', 'games.competition_id')
-                            ->leftJoin('type_games', 'draws.type_game_id', '=', 'type_games.id')
-                            ->leftJoin('users', 'games.user_id', '=', 'users.id')
+                            ->join('type_games', 'draws.type_game_id', '=', 'type_games.id')
+                            ->join('users', 'games.user_id', '=', 'users.id')
                             ->orderBy('competitions.sort_date')
                             ->get([
+                                'competitions.id as competicao_id',
                                 'games.id',
                                 'type_games.name as tipo_jogo',
                                 DB::raw('FORMAT(games.value, 2, "de_DE") as valor_aposta'),
@@ -122,7 +81,9 @@ class ApostasFeitasController extends Controller
                                 'competitions.number',
                                 'games.numbers',
                                 'users.name',
-                                'games.status'
+                                'users.email',
+                                'games.status',
+                                DB::raw('"'.$partner->name.'" as nome_banca')
                             ]);
 
                         $totalUsuarios = 0;

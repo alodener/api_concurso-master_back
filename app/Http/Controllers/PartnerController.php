@@ -1243,6 +1243,8 @@ class PartnerController extends Controller
                 ->where('games.checked', 1)
                 ->where(function($query) {
                     $query->where('games.status', 1)
+                        ->orWhere('games.status', 2)
+                        ->orWhere('games.status', 3)
                         ->orWhere('games.status', 4);
                 })
                 ->get();
