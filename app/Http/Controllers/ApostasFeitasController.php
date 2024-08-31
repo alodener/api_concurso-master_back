@@ -38,13 +38,16 @@ class ApostasFeitasController extends Controller
                 $modalidade     = $request->input('modalidade');
                 $data_sorteio   = $request->input('data_sorteio');
                 $bilheteId      = ($request->input('bilhete_id'));
+                $modalidade     = explode(',', $modalidade);
+                $banca          = explode(',', $banca);
+                $retorno        = [];
+                $totalUsuarios  = 0;
+                $totalPremios   = 0;
+                $totalBilhetes  = 0;
 
-                $banca = explode(',', $banca);
                 if($banca) {
                     foreach ( $banca as $b ) {
                         $partner = Partner::findOrFail($b);
-
-                        $modalidade = explode(',', $modalidade);
 
                         if(!is_array($modalidade)) $modalidade = [$modalidade];
 
@@ -86,11 +89,7 @@ class ApostasFeitasController extends Controller
                                 DB::raw('"'.$partner->name.'" as nome_banca')
                             ]);
 
-                        $totalUsuarios = 0;
-                        $totalPremios = 0;
-
                         $usuariosDistintos = [];
-
                         $dados->each(function ($item) use (&$totalUsuarios, &$totalPremios, &$usuariosDistintos) {
                             $premio = (float)str_replace(',', '.', $item->valor_premio);
                             $totalPremios += $premio;
@@ -99,14 +98,17 @@ class ApostasFeitasController extends Controller
                             }
                         });
 
-                        $totalUsuarios = count($usuariosDistintos);
+                        $totalUsuarios += count($usuariosDistintos);
+                        $totalBilhetes += count($dados);
 
-                        $resultado = [
-                            'total_usuarios' => $totalUsuarios,
-                            'total_premios'  => number_format($totalPremios, 2, ',', '.'),
-                            'total_bilhetes' => count($dados)
-                        ];
+                        array_merge($retorno, $dados->toArray());
                     }
+
+                    $resultado = [
+                        'total_usuarios' => $totalUsuarios,
+                        'total_premios'  => number_format($totalPremios, 2, ',', '.'),
+                        'total_bilhetes' => count($dados)
+                    ];
 
                     return response()->json(['success' => true, 'data' => $dados, 'analytics' => $resultado], 200);
                 }
