@@ -40,6 +40,7 @@ class ApostasFeitasController extends Controller
                 $bilheteId      = ($request->input('bilhete_id'));
                 $modalidade     = explode(',', $modalidade);
                 $banca          = explode(',', $banca);
+
                 $retorno        = [];
                 $totalUsuarios  = 0;
                 $totalPremios   = 0;
@@ -101,7 +102,8 @@ class ApostasFeitasController extends Controller
                         $totalUsuarios += count($usuariosDistintos);
                         $totalBilhetes += count($dados);
 
-                        array_merge($retorno, $dados->toArray());
+                        // array_merge($retorno, $dados->toArray());
+                        array_push($retorno, ...$dados->toArray());
                     }
 
                     $resultado = [
@@ -110,7 +112,7 @@ class ApostasFeitasController extends Controller
                         'total_bilhetes' => count($dados)
                     ];
 
-                    return response()->json(['success' => true, 'data' => $dados, 'analytics' => $resultado], 200);
+                    return response()->json(['success' => true, 'data' => $retorno, 'analytics' => $resultado], 200);
                 }
 
                 return response()->json(['errors' => 'Nenhuma banca informada'], 400);
