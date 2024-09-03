@@ -109,7 +109,7 @@ class ApostasFeitasController extends Controller
                     $resultado = [
                         'total_usuarios' => $totalUsuarios,
                         'total_premios'  => number_format($totalPremios, 2, ',', '.'),
-                        'total_bilhetes' => count($dados)
+                        'total_bilhetes' => count($retorno)
                     ];
 
                     return response()->json(['success' => true, 'data' => $retorno, 'analytics' => $resultado], 200);
