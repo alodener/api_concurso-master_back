@@ -68,9 +68,8 @@ class ApostasFeitasController extends Controller
                         }
 
                         $dados = $sql
-                            ->leftJoin('draws','competitions.id', '=', 'draws.competition_id')
                             ->leftJoin('games', 'competitions.id', '=', 'games.competition_id')
-                            ->join('type_games', 'draws.type_game_id', '=', 'type_games.id')
+                            ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
                             ->join('users', 'games.user_id', '=', 'users.id')
                             ->orderBy('competitions.sort_date')
                             ->get([
