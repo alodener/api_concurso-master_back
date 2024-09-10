@@ -25,7 +25,7 @@ class ApostasFeitasController extends Controller
 
                 $validator = Validator::make($data, [
                     'banca' => 'required|string',
-                    'modalidade' => 'required',
+                    // 'modalidade' => 'required',
                     'data_sorteio' => 'required|date',
                     'bilhete_id' => 'nullable|string',
                 ]);
@@ -54,7 +54,7 @@ class ApostasFeitasController extends Controller
 
                         $sql = DB::connection($partner->connection)
                             ->table('competitions')
-                            ->whereIn('competitions.type_game_id', $modalidade)
+                            // ->whereIn('competitions.type_game_id', $modalidade)
                             ->whereDate('competitions.sort_date', $data_sorteio)
                             ->where('games.id', '!=', 'null')
                         ;
@@ -71,6 +71,7 @@ class ApostasFeitasController extends Controller
                             ->leftJoin('games', 'competitions.id', '=', 'games.competition_id')
                             ->join('type_games', 'competitions.type_game_id', '=', 'type_games.id')
                             ->join('users', 'games.user_id', '=', 'users.id')
+                            ->join('clients', 'games.client_id', '=', 'clients.id')
                             ->orderBy('competitions.sort_date')
                             ->get([
                                 'competitions.id as competicao_id',
@@ -86,7 +87,9 @@ class ApostasFeitasController extends Controller
                                 'users.name',
                                 'users.email',
                                 'games.status',
-                                DB::raw('"'.$partner->name.'" as nome_banca')
+                                DB::raw('"'.$partner->name.'" as nome_banca'),
+                                'clients.name as client_name',
+                                'clients.id as client_id'
                             ]);
 
                         $usuariosDistintos = [];
