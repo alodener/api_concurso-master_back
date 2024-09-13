@@ -18,7 +18,7 @@ class ApostasFeitasController extends Controller
     public function filter(Request $request)
     {
         try {
-            $roles = ['super_admin', 'socio', 'admin'];
+            $roles = ['super_admin', 'socio', 'admin', 'gerente_jogo', 'gerente_jogo'];
 
             if (in_array(Auth::user()->role, $roles)) {
                 $data = $request->all();
