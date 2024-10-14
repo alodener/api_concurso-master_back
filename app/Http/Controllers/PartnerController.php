@@ -1840,9 +1840,13 @@ class PartnerController extends Controller
 
                 foreach ($data['competitions'] as $competitionId) {
                     // Encontrar números na tabela de draws
-                    $drawNumbers = DB::connection($data_partner->connection)
+                    $draw = DB::connection($data_partner->connection)
                         ->table('draws')
-                        ->where('competition_id', $competitionId)
+                        ->where('competition_id', $competitionId);
+
+                    $games_old = $draw->pluck('games')->toArray();
+
+                    $drawNumbers =  $draw
                         ->pluck('numbers')
                         ->toArray();
 
@@ -1867,6 +1871,7 @@ class PartnerController extends Controller
                         })
                         ->get();
 
+
                     // Retornar os IDs dos jogos encontrados
                     $gameIds = $matchingGames->pluck('id')->toArray();
 
@@ -1875,6 +1880,96 @@ class PartnerController extends Controller
                         ->table('draws')
                         ->where('competition_id', $competitionId)
                         ->update(['games' => implode(',', $gameIds)]);
+
+                    if( $gameIds ) {
+                        dd('Oi 1');
+
+                        foreach ( $gameIds as $g ) {
+                            // Se nao tiver na lista de ganhadores nova, será removido o saldo
+                            if( !in_array($g, $games_old) ) {
+                                $games = DB::connection($data_partner->connection)
+                                    ->table('games')
+                                    ->whereIn('id', $g)
+                                    ->where('status', 2)
+                                    ->get();
+
+                                foreach ( $games as $g ) {
+                                    $client_id = $g->client_id;
+                                    $total_premio = $g->premio;
+                                    $id = $g->id;
+
+                                    $client_data = DB::connection($data_partner->connection)->table('clients')->find($client_id);
+                                    if($client_data) {
+                                        $user_data = DB::connection($data_partner->connection)->table('users')->where('email', $client_data->email)->first();
+                                        if($user_data) {
+                                            $old_value = floatval($user_data->available_withdraw);  // Recupera o valor antigo do saldo disponível
+
+                                            $new_value = $old_value - $total_premio ;
+                                            $new_value = ($new_value < 0) ? 0 : $new_value;
+
+                                            DB::connection($data_partner->connection)->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                                        } else {
+                                            $user_data_default = DB::connection($data_partner->connection)->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                                            if($user_data_default) {
+                                                $old_value = floatval($user_data_default->available_withdraw);
+
+                                                $new_value = $old_value - $total_premio ;
+                                                $new_value = ($new_value < 0) ? 0 : $new_value;
+
+                                                DB::connection($data_partner->connection)->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+                                            }
+                                        }
+                                    }
+
+                                    DB::connection($data_partner->connection)
+                                        ->table('games')
+                                        ->where('id', $id)
+                                        ->update(['status' => 1]);
+                                }
+                            }
+                        }
+                    } else {
+                        $games = DB::connection($data_partner->connection)
+                            ->table('games')
+                            ->whereIn('competition_id', $competitionId)
+                            ->where('status', 2)
+                            ->get();
+
+                        foreach ( $games as $g ) {
+                            $client_id = $g->client_id;
+                            $total_premio = $g->premio;
+                            $id = $g->id;
+
+
+                            $client_data = DB::connection($data_partner->connection)->table('clients')->find($client_id);
+                            if($client_data) {
+                                $user_data = DB::connection($data_partner->connection)->table('users')->where('email', $client_data->email)->first();
+                                if($user_data) {
+                                    $old_value = floatval($user_data->available_withdraw);  // Recupera o valor antigo do saldo disponível
+
+                                    $new_value = $old_value - $total_premio;
+                                    $new_value = ($new_value < 0) ? 0 : $new_value;
+
+                                    DB::connection($data_partner->connection)->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
+                                } else {
+                                    $user_data_default = DB::connection($data_partner->connection)->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
+                                    if($user_data_default) {
+                                        $old_value = floatval($user_data_default->available_withdraw);
+
+                                        $new_value = $old_value - $total_premio;
+                                        $new_value = ($new_value < 0) ? 0 : $new_value;
+
+                                        DB::connection($data_partner->connection)->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
+                                    }
+                                }
+                            }
+
+                            DB::connection($data_partner->connection)
+                                ->table('games')
+                                ->where('id', $id)
+                                ->update(['status' => 1]);
+                        }
+                    }
                 }
             }
 
