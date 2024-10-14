@@ -70,6 +70,7 @@ Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/auto-aprovation', [PartnerController::class, 'getPartnersToPaytmentManagment']);
     Route::post('/auto-aprovation/save/{banca_id}', [PartnerController::class, 'saveValorToAutoAprovation']);
     Route::post('/auto-aprovation/pdf', [PartnerController::class, 'gerarPDFAutoAprovacoes']);
+    Route::get('/game-informations', [PartnerController::class, 'gameInformations']);
 });
 
 Route::get('/auto-aprovation/corrigir-saldos', [PartnerController::class, 'corrigirSaldos']);

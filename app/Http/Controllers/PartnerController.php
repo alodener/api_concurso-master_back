@@ -1268,6 +1268,7 @@ class PartnerController extends Controller
                     $sumPremio = $group->sum('premio');
                     return [
                         'id' => $group->pluck('id')->all(),
+                        'total_bilhetes' => count($group->pluck('id')->all()),
                         'name' => $first->name,
                         'premio' => $sumPremio,
                         'status' => $first->status,
@@ -1289,6 +1290,62 @@ class PartnerController extends Controller
         }
     }
 
+    public function gameInformations(Request $request)
+    {
+        try {
+            $data = $request->all();
+
+            if(!isset($data['partner'])) {
+                throw new Exception("Nenhuma banca informada");
+            }
+
+            // Busca informações do parceiro
+            $data_partner = Partner::findOrFail($data['partner']);
+
+            // Busca todos os jogos relacionados aos sorteios de uma vez
+            $gamesInfo = DB::connection($data_partner['connection'])
+                ->table('games')
+                ->select([
+                    'games.id',
+                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"),
+                    'games.premio',
+                    'games.status',
+                    'games.random_game',
+                    'type_games.name as game_name',
+                    'competitions.sort_date',
+                    DB::raw('"'.$data_partner['name'].'" as nome_banca')
+                ])
+                ->join('clients', 'clients.id', '=', 'games.client_id')
+                ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
+                ->join('competitions', 'competitions.id', '=', 'games.competition_id')
+                ->whereIn('games.id', json_decode($data['id']))
+                ->where('games.checked', 1)
+                ->where(function($query) {
+                    $query->where('games.status', 1)
+                        ->orWhere('games.status', 2)
+                        ->orWhere('games.status', 3)
+                        ->orWhere('games.status', 4);
+                })
+                ->get();
+
+            // Processa os jogos para adicionar informações adicionais
+            $processedGames = $gamesInfo->map(function ($game) {
+                $game->premio_formatted = $this->formatMoney($game->premio);
+                $game->random_game = $game->random_game == 1 ? 'Sim' : 'Não';
+                return $game;
+            });
+
+            return $processedGames;
+
+        } catch (\Throwable $th) {
+            throw new Exception($th);
+        } catch (\Exception $th) {
+            return response()->json([
+                'error' => true,
+                'msg' => $th->getMessage()
+            ]);
+        }
+    }
 
     private function formatMoney($value)
     {
