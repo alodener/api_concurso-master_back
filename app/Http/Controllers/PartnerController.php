@@ -1939,15 +1939,16 @@ class PartnerController extends Controller
                         ->update(['games' => implode(',', $gameIds)]);
 
                     if( $gameIds ) {
-                        dd('Oi 1');
-
                         foreach ( $gameIds as $g ) {
                             // Se nao tiver na lista de ganhadores nova, será removido o saldo
                             if( !in_array($g, $games_old) ) {
                                 $games = DB::connection($data_partner->connection)
                                     ->table('games')
                                     ->whereIn('id', $g)
-                                    ->where('status', 2)
+                                    ->where(function($query) {
+                                        $query->where('status', 2)
+                                            ->orWhere('status', 4);
+                                    })
                                     ->get();
 
                                 foreach ( $games as $g ) {
@@ -1962,7 +1963,7 @@ class PartnerController extends Controller
                                             $old_value = floatval($user_data->available_withdraw);  // Recupera o valor antigo do saldo disponível
 
                                             $new_value = $old_value - $total_premio ;
-                                            $new_value = ($new_value < 0) ? 0 : $new_value;
+                                            $new_value = ($new_value < 0) ? 1 : $new_value;
 
                                             DB::connection($data_partner->connection)->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
                                         } else {
@@ -1971,7 +1972,7 @@ class PartnerController extends Controller
                                                 $old_value = floatval($user_data_default->available_withdraw);
 
                                                 $new_value = $old_value - $total_premio ;
-                                                $new_value = ($new_value < 0) ? 0 : $new_value;
+                                                $new_value = ($new_value < 0) ? 1 : $new_value;
 
                                                 DB::connection($data_partner->connection)->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
                                             }
@@ -1989,7 +1990,10 @@ class PartnerController extends Controller
                         $games = DB::connection($data_partner->connection)
                             ->table('games')
                             ->whereIn('competition_id', $competitionId)
-                            ->where('status', 2)
+                            ->where(function($query) {
+                                $query->where('status', 2)
+                                    ->orWhere('status', 4);
+                            })
                             ->get();
 
                         foreach ( $games as $g ) {
