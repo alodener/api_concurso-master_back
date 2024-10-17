@@ -1903,6 +1903,8 @@ class PartnerController extends Controller
 
                     $games_old = $draw->pluck('games')->toArray();
 
+                    // dd( $games_old);
+
                     $drawNumbers =  $draw
                         ->pluck('numbers')
                         ->toArray();
@@ -1921,13 +1923,15 @@ class PartnerController extends Controller
                                 // Use a função FIND_IN_SET para verificar se os números estão presentes
                                 $query->where(function ($query) use ($numbers) {
                                     foreach ($numbers as $number) {
-                                        $query->whereRaw("FIND_IN_SET('$number', games.numbers) > 0");
+                                        $number = intval($number);
+
+                                        // $query->whereRaw("FIND_IN_SET('$number', games.numbers) > 0");
+                                        $query->whereRaw("FIND_IN_SET('$number', REPLACE(games.numbers, ' ', ',')) > 0");
                                     }
                                 });
                             }
                         })
                         ->get();
-
 
                     // Retornar os IDs dos jogos encontrados
                     $gameIds = $matchingGames->pluck('id')->toArray();
@@ -1944,7 +1948,7 @@ class PartnerController extends Controller
                             if( !in_array($g, $games_old) ) {
                                 $games = DB::connection($data_partner->connection)
                                     ->table('games')
-                                    ->whereIn('id', $g)
+                                    ->whereIn('id', [$g])
                                     ->where(function($query) {
                                         $query->where('status', 2)
                                             ->orWhere('status', 4);
@@ -1989,7 +1993,7 @@ class PartnerController extends Controller
                     } else {
                         $games = DB::connection($data_partner->connection)
                             ->table('games')
-                            ->whereIn('competition_id', $competitionId)
+                            ->whereIn('competition_id', [$competitionId])
                             ->where(function($query) {
                                 $query->where('status', 2)
                                     ->orWhere('status', 4);
