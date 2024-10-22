@@ -1960,6 +1960,7 @@ class PartnerController extends Controller
                                     $total_premio = $g->premio;
                                     $id = $g->id;
 
+
                                     $client_data = DB::connection($data_partner->connection)->table('clients')->find($client_id);
                                     if($client_data) {
                                         $user_data = DB::connection($data_partner->connection)->table('users')->where('email', $client_data->email)->first();
@@ -1967,7 +1968,7 @@ class PartnerController extends Controller
                                             $old_value = floatval($user_data->available_withdraw);  // Recupera o valor antigo do saldo disponível
 
                                             $new_value = $old_value - $total_premio ;
-                                            $new_value = ($new_value < 0) ? 1 : $new_value;
+                                            // $new_value = ($new_value < 0) ? 1 : $new_value;
 
                                             DB::connection($data_partner->connection)->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
                                         } else {
@@ -1976,7 +1977,7 @@ class PartnerController extends Controller
                                                 $old_value = floatval($user_data_default->available_withdraw);
 
                                                 $new_value = $old_value - $total_premio ;
-                                                $new_value = ($new_value < 0) ? 1 : $new_value;
+                                                // $new_value = ($new_value < 0) ? 1 : $new_value;
 
                                                 DB::connection($data_partner->connection)->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
                                             }
@@ -2013,7 +2014,7 @@ class PartnerController extends Controller
                                     $old_value = floatval($user_data->available_withdraw);  // Recupera o valor antigo do saldo disponível
 
                                     $new_value = $old_value - $total_premio;
-                                    $new_value = ($new_value < 0) ? 0 : $new_value;
+                                    // $new_value = ($new_value < 0) ? 0 : $new_value;
 
                                     DB::connection($data_partner->connection)->table('users')->where('id', $user_data->id)->update(['available_withdraw' => $new_value]);
                                 } else {
@@ -2022,7 +2023,7 @@ class PartnerController extends Controller
                                         $old_value = floatval($user_data_default->available_withdraw);
 
                                         $new_value = $old_value - $total_premio;
-                                        $new_value = ($new_value < 0) ? 0 : $new_value;
+                                        // $new_value = ($new_value < 0) ? 0 : $new_value;
 
                                         DB::connection($data_partner->connection)->table('users')->where('id', $user_data_default->id)->update(['available_withdraw' => $new_value]);
                                     }
@@ -2035,6 +2036,8 @@ class PartnerController extends Controller
                                 ->update(['status' => 1]);
                         }
                     }
+
+                    $this->autoAprovePrizeToPartner($partnerId);
                 }
             }
 
