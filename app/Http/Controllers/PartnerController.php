@@ -521,6 +521,8 @@ class PartnerController extends Controller
                     }
                 }
 
+                
+                $winners_users_ids = [];
                 foreach ($draws_id as $draw) {
                     $draw_data = DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->first();
                     $competitions = DB::connection($data_partner['connection'])->table('games')->where('checked', 1)->where('competition_id', $draw_data->competition_id)->get();
@@ -529,11 +531,26 @@ class PartnerController extends Controller
                         $count_numbers_correct = count(array_intersect($numbers_result, $resultsArray));
                         if(count($resultsArray) == $count_numbers_correct) {
                             $winners[] = $competition->id;
+                            $winners_users_ids[$competition->id] = $competition->user_id;
                         }
                     }
                     if(is_countable($winners) && count($winners) > 0) {
                         $winners_string = strval(implode(",", $winners));
                         DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->update(['games' => $winners_string]);
+                    }
+
+                    try {
+                        $winners = $winners ?? [];
+                        foreach ($winners as $key => $value) {
+                            DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
+                                'user_id' => $winners_users_ids[$value],
+                                'game_id' => $value,
+                                'draw_id' => $draw,
+                                'drawed_at' => Carbon::now('America/Sao_Paulo'),
+                            ]);
+                        }
+                    } catch (\Throwable $th) {
+                        //throw $th;
                     }
                     $winners = null;
                 }
