@@ -531,7 +531,7 @@ class PartnerController extends Controller
                         $count_numbers_correct = count(array_intersect($numbers_result, $resultsArray));
                         if(count($resultsArray) == $count_numbers_correct) {
                             $winners[] = $competition->id;
-                            $winners_users_ids[$competition->id] = [$competition->user_id,$competition->premio];
+                            $winners_users_ids[$competition->id] = [$competition->user_id,$competition->premio,$draw];
                         }
                     }
                     if(is_countable($winners) && count($winners) > 0) {
@@ -539,26 +539,16 @@ class PartnerController extends Controller
                         DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->update(['games' => $winners_string]);
                     }
 
-                    try {
-                        $winners = $winners ?? [];
-                        foreach ($winners as $key => $value) {
-                            if($winners_users_ids[$value][1]<= 100){
-                                DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
-                                    'user_id' => $winners_users_ids[$value][0],
-                                    'game_id' => $value,
-                                    'draw_id' => $draw,
-                                    'drawed_at' => Carbon::now('America/Sao_Paulo'),
-                                ]);
-                            }
-                            
-                        }
-                    } catch (\Throwable $th) {
-                        //throw $th;
-                    }
-                    $winners = null;
+                    
                 }
                 $partner_id = $data_partner['id'];
-                $this->autoAprovePrizeToPartner($partner_id);
+
+                $data = [ 
+                    "winners" => $winners,
+                    "winners_users_ids" => $winners_users_ids
+                ];
+                $winners = null;
+                $this->autoAprovePrizeToPartner($partner_id,$data);
             }
             return Response('Resultados enviados com sucesso', 200);
         } catch (\Throwable $th) {
@@ -2255,7 +2245,7 @@ class PartnerController extends Controller
         }
     }
 
-    public function autoAprovePrizeToPartner($partner_id) {
+    public function autoAprovePrizeToPartner($partner_id, $data = null) {
         $data_auto_aprovacao = date('Y-m-d');
         // $data_auto_aprovacao = '2024-07-30';
 
@@ -2263,6 +2253,25 @@ class PartnerController extends Controller
         $data_partner = Partner::findOrFail($partner_id);
         $valorMaximo    = $data_partner['min_value_autoaprovation'];
         $partnerId      = $data_partner['id'];
+        if(isset($data)){
+            try {
+                $winners = $data['winners'] ?? [];
+                foreach ($winners as $key => $value) {
+                    if($data['winners_users_ids'][$value][1]<= ($valorMaximo ?? 10)){
+                        DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
+                            'user_id' => $data['winners_users_ids'][$value][0],
+                            'game_id' => $value,
+                            'draw_id' => $data['winners_users_ids'][$value][2],
+                            'drawed_at' => Carbon::now('America/Sao_Paulo'),
+                        ]);
+                    }
+                    
+                }
+            } catch (\Throwable $th) {
+                // throw $th;
+            }
+        }
+        
 
         // => Inicio Faz a auto aprovação do prêmio
         $draws = DB::connection($data_partner['connection'])
