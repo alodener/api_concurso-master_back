@@ -531,7 +531,7 @@ class PartnerController extends Controller
                         $count_numbers_correct = count(array_intersect($numbers_result, $resultsArray));
                         if(count($resultsArray) == $count_numbers_correct) {
                             $winners[] = $competition->id;
-                            $winners_users_ids[$competition->id] = $competition->user_id;
+                            $winners_users_ids[$competition->id] = [$competition->user_id,$competition->premio];
                         }
                     }
                     if(is_countable($winners) && count($winners) > 0) {
@@ -539,15 +539,23 @@ class PartnerController extends Controller
                         DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->update(['games' => $winners_string]);
                     }
 
+                    $data = [
+                        'winners' => $winners,
+                        'winners_users_ids' => $winners_users_ids
+                    ];
                     try {
                         $winners = $winners ?? [];
+                        
                         foreach ($winners as $key => $value) {
-                            DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
-                                'user_id' => $winners_users_ids[$value],
-                                'game_id' => $value,
-                                'draw_id' => $draw,
-                                'drawed_at' => Carbon::now('America/Sao_Paulo'),
-                            ]);
+                            if($winners_users_ids[$value][1]<= 100){
+                                DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
+                                    'user_id' => $winners_users_ids[$value][0],
+                                    'game_id' => $value,
+                                    'draw_id' => $draw,
+                                    'drawed_at' => Carbon::now('America/Sao_Paulo'),
+                                ]);
+                            }
+                            
                         }
                     } catch (\Throwable $th) {
                         //throw $th;
@@ -2167,6 +2175,21 @@ class PartnerController extends Controller
                             'type' => 'Premiacao de jogo loteria id: ' .  $game_id,
                             'wallet' => 'Premiacao'
                             ]);
+
+
+                            try {
+                                $winners = $winners ?? [];
+                                foreach ($winners as $key => $value) {
+                                    DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
+                                        'user_id' => $user_data->id,
+                                        'game_id' => $game_id,
+                                        'draw_id' => $draw,
+                                        'drawed_at' => Carbon::now('America/Sao_Paulo'),
+                                    ]);
+                                }
+                            } catch (\Throwable $th) {
+                                //throw $th;
+                            }
                 } else {
                     // Atualiza o usuário padrão se o usuário específico não for encontrado
                     $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
@@ -2253,7 +2276,7 @@ class PartnerController extends Controller
         }
     }
 
-    public function autoAprovePrizeToPartner($partner_id) {
+    public function autoAprovePrizeToPartner($partner_id,$winners = null) {
         $data_auto_aprovacao = date('Y-m-d');
         // $data_auto_aprovacao = '2024-07-30';
 
