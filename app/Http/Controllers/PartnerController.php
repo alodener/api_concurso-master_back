@@ -2175,21 +2175,6 @@ class PartnerController extends Controller
                             'type' => 'Premiacao de jogo loteria id: ' .  $game_id,
                             'wallet' => 'Premiacao'
                             ]);
-
-
-                            try {
-                                $winners = $winners ?? [];
-                                foreach ($winners as $key => $value) {
-                                    DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
-                                        'user_id' => $user_data->id,
-                                        'game_id' => $game_id,
-                                        'draw_id' => $draw,
-                                        'drawed_at' => Carbon::now('America/Sao_Paulo'),
-                                    ]);
-                                }
-                            } catch (\Throwable $th) {
-                                //throw $th;
-                            }
                 } else {
                     // Atualiza o usuário padrão se o usuário específico não for encontrado
                     $user_data_default = DB::connection($data_partner['connection'])->table('users')->where('email', 'mercadopago@mercadopago.com')->first();
@@ -2276,7 +2261,7 @@ class PartnerController extends Controller
         }
     }
 
-    public function autoAprovePrizeToPartner($partner_id,$winners = null) {
+    public function autoAprovePrizeToPartner($partner_id) {
         $data_auto_aprovacao = date('Y-m-d');
         // $data_auto_aprovacao = '2024-07-30';
 
