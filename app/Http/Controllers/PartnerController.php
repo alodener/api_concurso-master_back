@@ -541,7 +541,6 @@ class PartnerController extends Controller
 
                     try {
                         $winners = $winners ?? [];
-                        
                         foreach ($winners as $key => $value) {
                             if($winners_users_ids[$value][1]<= 100){
                                 DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
@@ -558,7 +557,6 @@ class PartnerController extends Controller
                     }
                     $winners = null;
                 }
-
                 $partner_id = $data_partner['id'];
                 $this->autoAprovePrizeToPartner($partner_id);
             }
