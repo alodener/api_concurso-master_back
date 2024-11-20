@@ -43,11 +43,11 @@ Route::middleware('auth')->prefix('logs')->group(function () {
     Route::get('/', [LogController::class, 'index']);
 });
 
-Route::post('/send-result', [PartnerController::class, 'sendResultInMultiplePartners']);
 
 Route::middleware('auth')->prefix('partners')->group(function () {
     Route::get('/', [PartnerController::class, 'index']);
     Route::post('/', [PartnerController::class, 'createGameInMultiplePartners']);
+    Route::post('/send-result', [PartnerController::class, 'sendResultInMultiplePartners']);
     Route::get('/aprove-prize', [PartnerController::class, 'aprovePrize']);
     Route::get('/get-result', [PartnerController::class, 'getResultInMultiplePartners']);
     Route::get('/get-result2', [PartnerController::class, 'distributePrizes']);
