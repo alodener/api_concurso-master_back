@@ -539,10 +539,6 @@ class PartnerController extends Controller
                         DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->update(['games' => $winners_string]);
                     }
 
-                    $data = [
-                        'winners' => $winners,
-                        'winners_users_ids' => $winners_users_ids
-                    ];
                     try {
                         $winners = $winners ?? [];
                         
