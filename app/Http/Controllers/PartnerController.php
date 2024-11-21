@@ -497,7 +497,9 @@ class PartnerController extends Controller
         try {
             $data = $request->all();
             $resultsArray = array_map('intval', explode(',', $data['result']));
-
+            if (!isset($data['category'])) {
+                return response()->json(['error' => 'Category is missing'], 400);
+            }
             foreach ($data['partners'] as $partner) {
                 $winners = null;
                 $draw_data = null;
