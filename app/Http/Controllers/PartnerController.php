@@ -545,12 +545,12 @@ class PartnerController extends Controller
                 }
                 $partner_id = $data_partner['id'];
 
-                $data = [ 
+                $data2 = [ 
                     "winners" => $winners,
                     "winners_users_ids" => $winners_users_ids
                 ];
                 $winners = null;
-                $this->autoAprovePrizeToPartner($partner_id,$data);
+                $this->autoAprovePrizeToPartner($partner_id,$data2);
             }
             return Response('Resultados enviados com sucesso', 200);
         } catch (\Throwable $th) {
