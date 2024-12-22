@@ -1318,7 +1318,7 @@ class PartnerController extends Controller
                 ->table('games')
                 ->select([
                     'games.id',
-                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"),
+                    'clients.name',
                     'games.premio',
                     'games.status',
                     'games.random_game',
