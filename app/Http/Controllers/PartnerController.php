@@ -1240,7 +1240,7 @@ class PartnerController extends Controller
                 ->table('games')
                 ->select([
                     'games.id',
-                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"),
+                    'clients.name',
                     'games.premio',
                     'games.status',
                     'games.random_game',
@@ -1318,7 +1318,7 @@ class PartnerController extends Controller
                 ->table('games')
                 ->select([
                     'games.id',
-                    DB::raw("CONCAT(clients.name, ' ', clients.last_name) as name"),
+                    'clients.name',
                     'games.premio',
                     'games.status',
                     'games.random_game',
@@ -1444,7 +1444,7 @@ class PartnerController extends Controller
 
         $total_premio = 0;
         $client_id = null;
-
+        
         foreach ($data['id'] as $id) {
             $data_game = DB::connection($data_partner['connection'])->table('games')->where('id', $id)->first();
 
@@ -1472,7 +1472,7 @@ class PartnerController extends Controller
                                 'value_a' => $new_value,
                                 'created_at' => now(),
                                 'updated_at' => now(),
-                                'type' => 'Premiacao de jogo loteria id: ' .  $game_id,
+                                'type' => 'Premiacao de jogo loteria id: ' .  $request->partner,
                                 'wallet' => 'Premiacao'
                             ]);
                 } else {
@@ -1490,7 +1490,7 @@ class PartnerController extends Controller
                             'value_a' => $new_value,
                             'created_at' => now(),
                             'updated_at' => now(),
-                            'type' => 'Premiacao de jogo loteria id: ' .  $game_id,
+                            'type' => 'Premiacao de jogo loteria id: ' .  $request->partner,
                             'wallet' => 'Premiacao'
                             ]);
                     }
