@@ -1240,7 +1240,7 @@ class PartnerController extends Controller
                 ->table('games')
                 ->select([
                     'games.id',
-                    'clients.name',
+                    DB::raw("CONCAT(clients.name, ' ', COALESCE(clients.last_name, '')) as name"),
                     'games.premio',
                     'games.status',
                     'games.random_game',
@@ -1318,7 +1318,7 @@ class PartnerController extends Controller
                 ->table('games')
                 ->select([
                     'games.id',
-                    'clients.name',
+                    DB::raw("CONCAT(clients.name, ' ', COALESCE(clients.last_name, '')) as name"),
                     'games.premio',
                     'games.status',
                     'games.random_game',
