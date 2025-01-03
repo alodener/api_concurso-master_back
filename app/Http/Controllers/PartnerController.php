@@ -1451,6 +1451,16 @@ class PartnerController extends Controller
             if($data['status'] == 2 && $data_game) {
                 $total_premio += floatval($data_game->premio);
                 $client_id = $data_game->client_id; // Assume que todos os jogos são do mesmo cliente
+                
+                $data_draw = DB::connection($data_partner['connection'])->table('draws')->where('competition_id', $data_game->competition_id)->first();
+                if(isset($data_draw)){
+                    DB::connection($data_partner['connection'])->table('winning_ticket')->insertGetId([
+                        'user_id' => $data_game->user_id,
+                        'game_id' => $data_game->id,
+                        'draw_id' => $data_draw->id,
+                        'drawed_at' => Carbon::now('America/Sao_Paulo'),
+                    ]);
+                }
             }
 
             $game = DB::connection($data_partner['connection'])->table('games')->where('id', $id)->update(['status' => $data['status']]);
