@@ -1914,9 +1914,13 @@ class PartnerController extends Controller
     {
         try {
             foreach ($data['partners'] as $partnerId) {
+                try {
+                    
+                
                 $data_partner = Partner::findOrFail($partnerId);
 
                 foreach ($data['competitions'] as $competitionId) {
+                    try {
                     // Encontrar números na tabela de draws
                     $draw = DB::connection($data_partner->connection)
                         ->table('draws')
@@ -2013,6 +2017,7 @@ class PartnerController extends Controller
                             }
                         }
                     } else {
+                        
                         $games = DB::connection($data_partner->connection)
                             ->table('games')
                             ->whereIn('competition_id', [$competitionId])
@@ -2059,8 +2064,16 @@ class PartnerController extends Controller
                     }
 
                     $this->autoAprovePrizeToPartner($partnerId);
+                    } catch (\Throwable $th) {
+                        //throw $th;
+                    }
                 }
+
+            } catch (\Throwable $th) {
+                //throw $th;
             }
+            }
+            
 
             return response()->json(['message' => 'Vencedores Atualizados.'], 200);
         } catch (\Throwable $th) {
