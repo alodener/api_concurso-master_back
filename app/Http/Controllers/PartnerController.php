@@ -1218,7 +1218,7 @@ class PartnerController extends Controller
             if(!isset($data['partner'])) {
                 throw new Exception("Nenhuma banca informada");
             }
-
+            date_default_timezone_set('America/Sao_Paulo');
             $data_auto_aprovacao = date('Y-m-d');
             if( $data['date'] ) {
                 $data_auto_aprovacao = $data['date'];
@@ -2282,6 +2282,7 @@ class PartnerController extends Controller
     }
 
     public function autoAprovePrizeToPartner($partner_id, $data = null) {
+        date_default_timezone_set('America/Sao_Paulo');
         $data_auto_aprovacao = date('Y-m-d');
         // $data_auto_aprovacao = '2024-07-30';
 
