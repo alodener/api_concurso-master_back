@@ -1090,7 +1090,7 @@ class PartnerController extends Controller
                 
             $concurses = DB::connection($data_partner['connection'])
                 ->table('competitions')
-                // ->whereDate('sort_date', '=', $data['number'])
+                ->whereDate('sort_date', '=', $data['number'])
                 ->pluck('id');
             
             $draws = DB::connection($data_partner['connection'])
