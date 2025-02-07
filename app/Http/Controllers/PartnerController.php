@@ -1076,22 +1076,27 @@ class PartnerController extends Controller
     public function getResultInMultiplePartners(Request $request)
     {
         try {
-
+            
             $data = $request->all();
             $winners = [];
-            $data_partner = Partner::findOrFail($data['partner']);
+            $winnersAll = [];
 
-            // Ajuste para pesquisa por data
+            $ids = array_filter(explode(',', preg_replace('/[^0-9,]/', '', $data['partner'])), 'strlen');
+             
+            $partner = Partner::whereIn('id', $ids)->get();
+            foreach ($partner as $key => $data_partner) {
+                try {
+                    //code...
+                
             $concurses = DB::connection($data_partner['connection'])
                 ->table('competitions')
-                ->whereDate('sort_date', '=', $data['number'])
+                // ->whereDate('sort_date', '=', $data['number'])
                 ->pluck('id');
-
+            
             $draws = DB::connection($data_partner['connection'])
                 ->table('draws')
                 ->whereIn('competition_id', $concurses)
                 ->get();
-
             $games = [];
 
             foreach ($draws as $draw) {
@@ -1117,7 +1122,7 @@ class PartnerController extends Controller
                         ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
                         ->where('games.checked', 1)
                         ->whereIn('games.id', $numbers_draw);
-
+                    
                     // Verifique se o parâmetro 'groupgame' está presente na requisição
 
                     if (isset($data['groupgame'])) {
@@ -1131,7 +1136,7 @@ class PartnerController extends Controller
                     }
 
                     $drawGames = $drawGamesQuery->get();
-
+    
                     foreach ($drawGames as $game) {
                         $game->sort_date = $competition->sort_date;
                         $game->num_tickets = $num_tickets;
@@ -1151,7 +1156,13 @@ class PartnerController extends Controller
                 ->all();
 
             $winners = $this->consolidateResultsByGameName($winners);
-            return $winners;
+            $winnersAll = array_merge_recursive($winnersAll, $winners);
+            } catch (\Throwable $th) {
+                //throw $th;
+            }
+        }
+
+            return $winnersAll;
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
@@ -1671,7 +1682,7 @@ class PartnerController extends Controller
                     foreach ($winners as $key => $winner) {
                         // Check if the current winner is associated with the current game_name
                         if ($winner->game_name === $gameName) {
-                            $winnerFullName = $winner->first_name . ' ' . $winner->last_name;
+                            $winnerFullName = ($winner->first_name ?? ''). ' ' . $winner->last_name;
 
                             $winnerPrize = intval($totalAmount * $distributionFactors[$key]);
                             $winnerStatus = rand(1, 3);
@@ -1722,7 +1733,7 @@ class PartnerController extends Controller
 
         for ($i = 0; $i < $numberOfWinners; $i++) {
             $fakeWinner = People::inRandomOrder()->first();
-            $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
+            $fakeWinnerFullName = ($fakeWinner->first_name?? '') . ' ' . ($fakeWinner->last_name ?? '');
 
             // Usar o percentual da lista gerada
             $percentual = $percentages[$i];
@@ -1735,7 +1746,7 @@ class PartnerController extends Controller
             while (in_array($fakeWinnerFullName, $existingNames)) {
                 // Escolher um novo vencedor se o nome já estiver presente
                 $fakeWinner = People::inRandomOrder()->first();
-                $fakeWinnerFullName = $fakeWinner->first_name . ' ' . $fakeWinner->last_name;
+                $fakeWinnerFullName = ($fakeWinner->first_name ?? '') . ' ' . ($fakeWinner->last_name ?? '');
             }
 
             // Adicionar o nome à lista de nomes já presentes
