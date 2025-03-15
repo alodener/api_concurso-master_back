@@ -1083,7 +1083,6 @@ class PartnerController extends Controller
 
             $ids = array_filter(explode(',', preg_replace('/[^0-9,]/', '', $data['partner'])), 'strlen');
 
-            $ids = ['3'];
             $partner = Partner::whereIn('id', $ids)->get();
 
             foreach ($partner as $key => $data_partner) {
