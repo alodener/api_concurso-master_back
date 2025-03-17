@@ -1681,7 +1681,11 @@ class PartnerController extends Controller
             } else {
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
-                    $allGameNames[] = $gameName;
+                    $banca = $result['banca'] ?? null;
+                    $allGameNames[] = [
+                        'name' => $gameName,
+                        'banca' => $banca
+                    ];
 
                     $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                     $num_tickets = $result['num_tickets'] ?? null;
@@ -1704,6 +1708,7 @@ class PartnerController extends Controller
                                 'sort_date' => $sortDate,
                                 'num_tickets' => $num_tickets,
                                 'premio_formatted' => $this->formatMoney($winnerPrize),
+                                'banca' => $banca,
                             ];
                         }
                     }
@@ -1711,9 +1716,10 @@ class PartnerController extends Controller
             }
 
             // Adicione ganhadores fictícios para cada nome de jogo único
-            $uniqueGameNames = array_unique($allGameNames);
-            foreach ($uniqueGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName, $sortDate);
+            // $uniqueGameNames = array_unique($allGameNames);
+
+            foreach ($allGameNames as $gameName) {
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName['name'], $sortDate, $gameName['banca']);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
 
@@ -1730,7 +1736,7 @@ class PartnerController extends Controller
         }
     }
 
-    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate)
+    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate, $banca = null)
     {
         // Chamar a função para gerar os percentuais
         $percentages = $this->generatePercentages($numberOfWinners);
@@ -1773,6 +1779,7 @@ class PartnerController extends Controller
                 'sort_date' => $sortDate,
                 'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
+                'banca' => $banca
             ];
         }
 
