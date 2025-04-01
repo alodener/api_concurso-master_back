@@ -1083,8 +1083,6 @@ class PartnerController extends Controller
 
             $ids = array_filter(explode(',', preg_replace('/[^0-9,]/', '', $data['partner'])), 'strlen');
 
-            $ids = [2,3];
-
             $partner = Partner::whereIn('id', $ids)->get();
 
             foreach ($partner as $key => $data_partner) {
@@ -1686,9 +1684,12 @@ class PartnerController extends Controller
                 foreach ($resultInMultiplePartners as $result) {
                     $gameName = $result['game_name'] ?? null;
                     $banca = $result['banca'] ?? null;
+                    $categoria = $result['categoria'] ?? null;
+
                     $allGameNames[] = [
                         'name' => $gameName,
-                        'banca' => $banca
+                        'banca' => $banca,
+                        'categoria' => $categoria,
                     ];
 
                     $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
@@ -1713,6 +1714,7 @@ class PartnerController extends Controller
                                 'num_tickets' => $num_tickets,
                                 'premio_formatted' => $this->formatMoney($winnerPrize),
                                 'banca' => $banca,
+                                'categoria' => $categoria,
                             ];
                         }
                     }
@@ -1723,7 +1725,7 @@ class PartnerController extends Controller
             // $uniqueGameNames = array_unique($allGameNames);
 
             foreach ($allGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName['name'], $sortDate, $gameName['banca']);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName['name'], $sortDate, $gameName['banca'], $gameName['categoria']);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
 
@@ -1732,15 +1734,13 @@ class PartnerController extends Controller
             $mergedResults = collect($mergedResults)->sortByDesc('premio')->values()->all();
             $mergedResults = $this->organizarPorCategoria($mergedResults);
 
-
-
             return response()->json($mergedResults, 200);
         } catch (\Throwable $th) {
             throw new Exception($th);
         }
     }
 
-    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate, $banca = null)
+    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate, $banca = null, $categoria = null)
     {
         // Chamar a função para gerar os percentuais
         $percentages = $this->generatePercentages($numberOfWinners);
@@ -1783,7 +1783,8 @@ class PartnerController extends Controller
                 'sort_date' => $sortDate,
                 'num_tickets' => random_int(1, 4),
                 'premio_formatted' => $this->formatMoney($winnerPrize),
-                'banca' => $banca
+                'banca' => $banca,
+                'categoria' => $categoria,
             ];
         }
 
