@@ -1083,6 +1083,8 @@ class PartnerController extends Controller
 
             $ids = array_filter(explode(',', preg_replace('/[^0-9,]/', '', $data['partner'])), 'strlen');
 
+            $ids = [2,3];
+
             $partner = Partner::whereIn('id', $ids)->get();
 
             foreach ($partner as $key => $data_partner) {
@@ -1118,6 +1120,7 @@ class PartnerController extends Controller
                                     'games.premio',
                                     'games.status',
                                     'type_games.name as game_name',
+                                    'type_games.category as categoria',
                                 ])
                                 ->join('clients', 'clients.id', '=', 'games.client_id')
                                 ->join('type_games', 'type_games.id', '=', 'games.type_game_id')
@@ -1195,7 +1198,8 @@ class PartnerController extends Controller
                             'sort_date' => $winnerGroup->first()->sort_date,
                             'num_tickets' => $occurrences, // Adiciona a contagem de ocorrências
                             'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
-                            'banca' => $winnerGroup->first()->banca
+                            'banca' => $winnerGroup->first()->banca,
+                            'categoria' => $winnerGroup->first()->categoria,
                         ];
                     })->values()->all();
 
