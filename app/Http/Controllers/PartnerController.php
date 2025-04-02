@@ -1689,7 +1689,7 @@ class PartnerController extends Controller
                     $categoria = $result['categoria'] ?? null;
 
                     $existe = !empty(array_filter($allGameNames, function ($game) use ($banca, $categoria) {
-                        return $game['banca'] === $banca && $game['categoria'] === $categoria;
+                        return $game['categoria'] === $categoria;
                     }));
 
                     if (!$existe) {
