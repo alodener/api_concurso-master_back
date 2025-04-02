@@ -1083,6 +1083,8 @@ class PartnerController extends Controller
 
             $ids = array_filter(explode(',', preg_replace('/[^0-9,]/', '', $data['partner'])), 'strlen');
 
+            // $ids = [2,3];
+
             $partner = Partner::whereIn('id', $ids)->get();
 
             foreach ($partner as $key => $data_partner) {
@@ -1686,11 +1688,17 @@ class PartnerController extends Controller
                     $banca = $result['banca'] ?? null;
                     $categoria = $result['categoria'] ?? null;
 
-                    $allGameNames[] = [
-                        'name' => $gameName,
-                        'banca' => $banca,
-                        'categoria' => $categoria,
-                    ];
+                    $existe = !empty(array_filter($allGameNames, function ($game) use ($banca, $categoria) {
+                        return $game['banca'] === $banca && $game['categoria'] === $categoria;
+                    }));
+
+                    if (!$existe) {
+                        $allGameNames[] = [
+                            'name' => $gameName,
+                            'banca' => $banca,
+                            'categoria' => $categoria,
+                        ];
+                    }
 
                     $sortDate = Carbon::parse($result['sort_date'] ?? now())->setHour(16)->setMinute(0)->setSecond(0)->format('Y-m-d 16:00:00');
                     $num_tickets = $result['num_tickets'] ?? null;
