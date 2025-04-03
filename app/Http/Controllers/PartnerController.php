@@ -1689,7 +1689,7 @@ class PartnerController extends Controller
                     $categoria = $result['categoria'] ?? null;
 
                     $existe = !empty(array_filter($allGameNames, function ($game) use ($banca, $categoria) {
-                        return $game['categoria'] === $categoria;
+                        return $game['banca'] === $banca && $game['categoria'] === $categoria;
                     }));
 
                     if (!$existe) {
@@ -2311,7 +2311,6 @@ class PartnerController extends Controller
     public function autoAprovePrizeToPartner($partner_id, $data = null) {
         date_default_timezone_set('America/Sao_Paulo');
         $data_auto_aprovacao = date('Y-m-d');
-        // $data_auto_aprovacao = '2024-07-30';
 
         // Busca informações do parceiro
         $data_partner = Partner::findOrFail($partner_id);
@@ -2335,7 +2334,6 @@ class PartnerController extends Controller
                 // throw $th;
             }
         }
-
 
         // => Inicio Faz a auto aprovação do prêmio
         $draws = DB::connection($data_partner['connection'])
