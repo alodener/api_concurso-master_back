@@ -304,7 +304,7 @@ class PartnerController extends Controller
 
            // Itera sobre os registros encontrados e decodifica o JSON em cada um deles
             foreach ($winnersList as $record) {
-                $jsonData = json_decode($record->json, true);
+                $jsonData = is_array($record->json) ? $record->json : json_decode($record->json, true);
 
                 // Adiciona os dados decodificados ao array formatado
                 foreach ($jsonData as $item) {
