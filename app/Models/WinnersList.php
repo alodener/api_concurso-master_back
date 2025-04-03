@@ -17,6 +17,10 @@ class WinnersList extends Model
         'json'
     ];
 
+    protected $casts = [
+        'json' => 'array'
+    ];
+
     /**
      * Get the partner that owns the winners list.
      */

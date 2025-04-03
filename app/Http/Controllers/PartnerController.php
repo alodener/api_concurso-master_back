@@ -160,40 +160,55 @@ class PartnerController extends Controller
 
             // Verifica se há itens na lista de ganhadores
             if (isset($requestData['winners2']) && !empty($requestData['winners2'])) {
-                // Converte a lista de ganhadores para JSON
-                $winnersJson = json_encode($requestData['winners2']);
+                $groupedByBanca = [];
 
-                // Verifica se já existe um registro para essa banca e data de sorteio
-                $existingWinnersList = WinnersList::where('banca_id', $requestData['banca_id'])
-                    ->where('sort_date', $request['sort_date'])
-                    ->first();
+                foreach ($requestData['winners2'] as $winner) {
+                    $id_banca = $winner['id_banca'];
 
-                // Verifica se o registro existe e atualiza, senão, cria um novo
-                if ($existingWinnersList) {
-                    // Atualiza o registro existente com os novos dados
-                    $existingWinnersList->update([
-                        'fake_winners' => $fakes,
-                        'fake_premio' => $premio,
-                        'json' => $winnersJson
-                    ]);
-
-                    // Retorna uma resposta HTTP 200 OK com os dados atualizados
-                    return response()->json($existingWinnersList, 200);
-                } else {
-                    // Cria um novo registro utilizando o model WinnersList
-                    $winnersList = WinnersList::create([
-                        'banca_id' => $requestData['banca_id'],
-                        'fake_winners' => $fakes,
-                        'fake_premio' => $premio,
-                        'sort_date' => $request['sort_date'],
-                        'json' => $winnersJson
-                    ]);
-
-                    // Retorna uma resposta HTTP 200 OK com os dados do novo registro
-                    return response()->json($winnersList, 200);
+                    if (!isset($groupedByBanca[$id_banca])) {
+                        $groupedByBanca[$id_banca] = [];
+                    }
+                    $groupedByBanca[$id_banca][] = $winner;
                 }
+
+                foreach ( $groupedByBanca as $idBanca => $gBanca ) {
+                    $existingWinnersList = WinnersList::where('banca_id', $idBanca)
+                        ->where('sort_date', $request['sort_date'])
+                        ->first();
+
+                    if ($existingWinnersList) {
+                        $oldJson = is_array($existingWinnersList->json) ? $existingWinnersList->json : json_decode($existingWinnersList->json, true) ?? [];
+                        $newWinners = $gBanca;
+
+                        $existingIds = array_column($oldJson, 'id');
+                        $newEntries = [];
+
+                        foreach ($newWinners as $winner) {
+                            if (!in_array($winner['id'], $existingIds)) {
+                                $newEntries[] = $winner;
+                            }
+                        }
+
+                        $updatedJson = array_merge($oldJson, $newEntries);
+
+                        $existingWinnersList->update([
+                            'fake_winners' => $fakes,
+                            'fake_premio' => $premio,
+                            'json' => json_encode($updatedJson, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                        ]);
+                    } else {
+                        $winnersList = WinnersList::insert([
+                            'banca_id' => $idBanca,
+                            'fake_winners' => $fakes,
+                            'fake_premio' => $premio,
+                            'sort_date' => $request['sort_date'],
+                            'json' => json_encode($gBanca, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                        ]);
+                    }
+                }
+
+                return response()->json($requestData['winners2'], 200);
             } else {
-                // Retorna uma resposta HTTP 400 Bad Request se não houver itens na lista de ganhadores
                 return response()->json(['error' => 'Lista de ganhadores vazia.'], 400);
             }
         } catch (\Exception $e) {
@@ -1089,6 +1104,8 @@ class PartnerController extends Controller
 
             foreach ($partner as $key => $data_partner) {
                 $nome_banca = $data_partner['name'];
+                $id_banca = $data_partner['id'];
+
                 try {
                     $concurses = DB::connection($data_partner['connection'])
                         ->table('competitions')
@@ -1146,6 +1163,7 @@ class PartnerController extends Controller
                             $drawGames = $drawGamesQuery->get();
 
                             foreach ($drawGames as $game) {
+                                $game->id_banca = $id_banca;
                                 $game->banca = $nome_banca;
                                 $game->sort_date = $competition->sort_date;
                                 $game->num_tickets = $num_tickets;
@@ -1200,6 +1218,7 @@ class PartnerController extends Controller
                             'premio_formatted' => 'R$ ' . number_format($totalPrize, 2, ',', '.'),
                             'banca' => $winnerGroup->first()->banca,
                             'categoria' => $winnerGroup->first()->categoria,
+                            'id_banca' => $winnerGroup->first()->id_banca,
                         ];
                     })->values()->all();
 
