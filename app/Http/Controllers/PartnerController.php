@@ -1706,9 +1706,11 @@ class PartnerController extends Controller
                     $gameName = $result['game_name'] ?? null;
                     $banca = $result['banca'] ?? null;
                     $categoria = $result['categoria'] ?? null;
+                    $id_banca = $result['id_banca'] ?? null;
 
                     $existe = !empty(array_filter($allGameNames, function ($game) use ($banca, $categoria) {
-                        return $game['banca'] === $banca && $game['categoria'] === $categoria;
+                        return $game['categoria'] === $categoria;
+                        // return $game['banca'] === $banca && $game['categoria'] === $categoria;
                     }));
 
                     if (!$existe) {
@@ -1716,6 +1718,7 @@ class PartnerController extends Controller
                             'name' => $gameName,
                             'banca' => $banca,
                             'categoria' => $categoria,
+                            'id_banca' => $id_banca,
                         ];
                     }
 
@@ -1742,6 +1745,7 @@ class PartnerController extends Controller
                                 'premio_formatted' => $this->formatMoney($winnerPrize),
                                 'banca' => $banca,
                                 'categoria' => $categoria,
+                                'id_banca' => $id_banca,
                             ];
                         }
                     }
@@ -1752,7 +1756,7 @@ class PartnerController extends Controller
             // $uniqueGameNames = array_unique($allGameNames);
 
             foreach ($allGameNames as $gameName) {
-                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName['name'], $sortDate, $gameName['banca'], $gameName['categoria']);
+                $fakeWinners = $this->generateFakeWinners($numberOfPeople, $totalAmount, $gameName['name'], $sortDate, $gameName['banca'], $gameName['categoria'], $gameName['id_banca']);
                 $winnersList = array_merge($winnersList, $fakeWinners);
             }
 
@@ -1767,7 +1771,7 @@ class PartnerController extends Controller
         }
     }
 
-    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate, $banca = null, $categoria = null)
+    private function generateFakeWinners($numberOfWinners, $totalAmount, $gameName, $sortDate, $banca = null, $categoria = null, $id_banca = null)
     {
         // Chamar a função para gerar os percentuais
         $percentages = $this->generatePercentages($numberOfWinners);
@@ -1812,6 +1816,7 @@ class PartnerController extends Controller
                 'premio_formatted' => $this->formatMoney($winnerPrize),
                 'banca' => $banca,
                 'categoria' => $categoria,
+                'id_banca' => $id_banca,
             ];
         }
 
