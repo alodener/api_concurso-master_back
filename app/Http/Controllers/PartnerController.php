@@ -424,6 +424,9 @@ class PartnerController extends Controller
 }
 
     private function addTeimosinha($data_partner, $type_game, $quant,$comp){
+        try {
+            //code...
+        
         $subquery = DB::connection($data_partner['connection'])
             ->table('teimosinhas')
             ->selectRaw('MAX(id) as id')
@@ -456,6 +459,9 @@ class PartnerController extends Controller
             ->delete();
         }
 
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
     }
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
