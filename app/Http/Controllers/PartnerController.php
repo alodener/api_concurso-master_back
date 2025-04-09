@@ -424,6 +424,9 @@ class PartnerController extends Controller
 }
 
     private function addTeimosinha($data_partner, $type_game, $quant,$comp){
+        try {
+            //code...
+        
         $subquery = DB::connection($data_partner['connection'])
             ->table('teimosinhas')
             ->selectRaw('MAX(id) as id')
@@ -444,17 +447,21 @@ class PartnerController extends Controller
             unset($copy['id']); 
             $copy['created_at'] = $agora;
             $copy['updated_at'] = $agora;
-            $copy['competition_id'] = $comp;
-            for ($i=0; $i < $quant; $i++) { 
+
+            foreach ($comp as $key => $cp) {
+                $copy['competition_id'] = $cp;
                 DB::connection($data_partner['connection'])->table('games')->insertGetId($copy);
             }
-
+            
             DB::connection($data_partner['connection'])
             ->table('teimosinhas')
             ->where('id', $value->id)
             ->delete();
         }
 
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
     }
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
@@ -480,7 +487,7 @@ class PartnerController extends Controller
                                 'created_at' => Carbon::now('America/Sao_Paulo'),
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
-                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                            $compIdb = DB::connection($data_partner['connection'])->table('competitions')->insert([
                                 'number' => $data['number'],
                                 'type_game_id' => $type_game->id,
                                 'sort_date' => $data['date_of_sort'],
@@ -488,7 +495,7 @@ class PartnerController extends Controller
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
                             
-                            return $this->addTeimosinha($data_partner, $type_game, 2, $compId);
+                            return $this->addTeimosinha($data_partner, $type_game, 2, [$compId,$compIdb]);
                             
                         }
                         
@@ -499,23 +506,26 @@ class PartnerController extends Controller
                         $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
                         if(!$has_competition) {
                              $letras = ['A', 'B', 'C', 'D', 'E', 'F'];
+                             $comps= [];
                             foreach ($letras as $letra) {
-                            $compId = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
-                                'number' => $data['number'] . $letra,
-                                'type_game_id' => $type_game->id,
-                                'sort_date' => $data['date_of_sort'],
-                                'created_at' => Carbon::now('America/Sao_Paulo'),
-                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                                 $compId = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
+                                    'number' => $data['number'] . $letra,
+                                    'type_game_id' => $type_game->id,
+                                    'sort_date' => $data['date_of_sort'],
+                                    'created_at' => Carbon::now('America/Sao_Paulo'),
+                                    'updated_at' => Carbon::now('America/Sao_Paulo')
                                 ]);
+                                array_push($comps, $compId);
                             }
-                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                            $compIdb = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
                                 'number' => $data['number'],
                                 'type_game_id' => $type_game->id,
                                 'sort_date' => $data['date_of_sort'],
                                 'created_at' => Carbon::now('America/Sao_Paulo'),
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
-                            return $this->addTeimosinha($data_partner, $type_game, 2, $compId);
+                            array_push($comps, $compIdb);
+                            return $this->addTeimosinha($data_partner, $type_game, 2, $comps);
                         }
                     }
                 }
@@ -531,7 +541,7 @@ class PartnerController extends Controller
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
                             
-                            return $this->addTeimosinha($data_partner, $type_game, 1, $compId);
+                            return $this->addTeimosinha($data_partner, $type_game, 1, [$compId]);
                         }
                     }
                 }
