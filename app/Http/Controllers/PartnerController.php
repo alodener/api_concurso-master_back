@@ -466,7 +466,7 @@ class PartnerController extends Controller
                 $data_partner = Partner::findOrFail($partner);
                 
                 
-                // $_SESSION['partner_create_game'] = $data_partner;
+                $_SESSION['partner_create_game'] = $data_partner;
                 $type_games = DB::connection($data_partner['connection'])->table('type_games')->where('category', $data['category'])->get();
                 
                 if($data['category'] == 'dupla_sena') {
@@ -538,7 +538,7 @@ class PartnerController extends Controller
             }
             return Response('Criação Finalizada', 200);
         } catch (\Throwable $th) {
-            // $data_partner = $_SESSION['partner_create_game'];
+            $data_partner = $_SESSION['partner_create_game'];
             $log = new Log();
             $log->user_id = Auth::user()->id;
             $log->user_name = Auth::user()->name;
