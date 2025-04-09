@@ -423,22 +423,57 @@ class PartnerController extends Controller
     }
 }
 
+    private function addTeimosinha($data_partner, $type_game, $quant,$comp){
+        $subquery = DB::connection($data_partner['connection'])
+            ->table('teimosinhas')
+            ->selectRaw('MAX(id) as id')
+            ->where('type_game_id', $type_game->id)
+            ->groupBy('game_id');
 
+        $registros = DB::connection($data_partner['connection'])
+        ->table('teimosinhas')
+        ->whereIn('id', $subquery)
+        ->get();
+        $agora = Carbon::now()->format('Y-m-d H:i:s');
+        foreach ($registros as $key => $value) {
+            
+            $game = $subquery = DB::connection($data_partner['connection'])
+            ->table('games')
+            ->where('id', $value->game_id)->first();
+            $copy = (array) $game;
+            unset($copy['id']); 
+            $copy['created_at'] = $agora;
+            $copy['updated_at'] = $agora;
+            $copy['competition_id'] = $comp;
+            for ($i=0; $i < $quant; $i++) { 
+                DB::connection($data_partner['connection'])->table('games')->insertGetId($copy);
+            }
+
+            DB::connection($data_partner['connection'])
+            ->table('teimosinhas')
+            ->where('id', $value->id)
+            ->delete();
+        }
+
+    }
 
     public function createGameInMultiplePartners(CreateGameInMultiplePartnersRequest $request) {
+        
         ini_set('max_execution_time', 180);
         try {
             $data = $request->all();
-
             foreach ($data['partners'] as $partner) {
                 $data_partner = Partner::findOrFail($partner);
-                $_SESSION['partner_create_game'] = $data_partner;
+                
+                
+                // $_SESSION['partner_create_game'] = $data_partner;
                 $type_games = DB::connection($data_partner['connection'])->table('type_games')->where('category', $data['category'])->get();
+                
                 if($data['category'] == 'dupla_sena') {
                     foreach ($type_games as $type_game) {
                         $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
                         if(!$has_competition) {
-                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                            $compId = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
                                 'number' => $data['number'].'A',
                                 'type_game_id' => $type_game->id,
                                 'sort_date' => $data['date_of_sort'],
@@ -452,7 +487,11 @@ class PartnerController extends Controller
                                 'created_at' => Carbon::now('America/Sao_Paulo'),
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
+                            
+                            return $this->addTeimosinha($data_partner, $type_game, 2, $compId);
+                            
                         }
+                        
                     }
                 }
                  if($data['category'] == 'mega_kino') {
@@ -461,7 +500,7 @@ class PartnerController extends Controller
                         if(!$has_competition) {
                              $letras = ['A', 'B', 'C', 'D', 'E', 'F'];
                             foreach ($letras as $letra) {
-                                DB::connection($data_partner['connection'])->table('competitions')->insert([
+                            $compId = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
                                 'number' => $data['number'] . $letra,
                                 'type_game_id' => $type_game->id,
                                 'sort_date' => $data['date_of_sort'],
@@ -476,6 +515,7 @@ class PartnerController extends Controller
                                 'created_at' => Carbon::now('America/Sao_Paulo'),
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
+                            return $this->addTeimosinha($data_partner, $type_game, 2, $compId);
                         }
                     }
                 }
@@ -483,20 +523,22 @@ class PartnerController extends Controller
                     foreach ($type_games as $type_game) {
                         $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
                         if(!$has_competition) {
-                            DB::connection($data_partner['connection'])->table('competitions')->insert([
+                            $compId = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
                                 'number' => $data['number'],
                                 'type_game_id' => $type_game->id,
                                 'sort_date' => $data['date_of_sort'],
                                 'created_at' => Carbon::now('America/Sao_Paulo'),
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
+                            
+                            return $this->addTeimosinha($data_partner, $type_game, 1, $compId);
                         }
                     }
                 }
             }
             return Response('Criação Finalizada', 200);
         } catch (\Throwable $th) {
-            $data_partner = $_SESSION['partner_create_game'];
+            // $data_partner = $_SESSION['partner_create_game'];
             $log = new Log();
             $log->user_id = Auth::user()->id;
             $log->user_name = Auth::user()->name;
