@@ -495,7 +495,7 @@ class PartnerController extends Controller
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
                             
-                            return $this->addTeimosinha($data_partner, $type_game, 2, [$compId,$compIdb]);
+                             $this->addTeimosinha($data_partner, $type_game, 2, [$compId,$compIdb]);
                             
                         }
                         
@@ -525,7 +525,7 @@ class PartnerController extends Controller
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
                             array_push($comps, $compIdb);
-                            return $this->addTeimosinha($data_partner, $type_game, 2, $comps);
+                             $this->addTeimosinha($data_partner, $type_game, 2, $comps);
                         }
                     }
                 }
@@ -541,7 +541,7 @@ class PartnerController extends Controller
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
                             
-                            return $this->addTeimosinha($data_partner, $type_game, 1, [$compId]);
+                             $this->addTeimosinha($data_partner, $type_game, 1, [$compId]);
                         }
                     }
                 }
