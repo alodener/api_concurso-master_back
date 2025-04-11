@@ -487,7 +487,7 @@ class PartnerController extends Controller
                                 'created_at' => Carbon::now('America/Sao_Paulo'),
                                 'updated_at' => Carbon::now('America/Sao_Paulo')
                             ]);
-                            $compIdb = DB::connection($data_partner['connection'])->table('competitions')->insert([
+                            $compIdb = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
                                 'number' => $data['number'],
                                 'type_game_id' => $type_game->id,
                                 'sort_date' => $data['date_of_sort'],
