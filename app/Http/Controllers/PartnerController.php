@@ -520,24 +520,24 @@ class PartnerController extends Controller
                 $winners = null;
                 $draw_data = null;
                 $concurses_id = null;
-                $draws_id = [3725];
+                $draws_id = [];
                 $data_partner = Partner::findOrFail($partner);
                 $_SESSION['partner_send_result'] = $data_partner;
                 $categorys = DB::connection($data_partner['connection'])->table('type_games')->where('category', $data['category'])->pluck('id');
                 $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->whereIn('type_game_id', $categorys)->get();
-                // foreach ($concurses as $concurse) {
-                //     $has_draw = DB::connection($data_partner['connection'])->table('draws')->where('type_game_id', $concurse->type_game_id)->where('competition_id', $concurse->id)->exists();
-                //     if(!$has_draw) {
-                //         $concurses_id[] = $concurse->id;
-                //         $draws_id[] = DB::connection($data_partner['connection'])->table('draws')->insertGetId([
-                //             'type_game_id' => $concurse->type_game_id,
-                //             'competition_id' => $concurse->id,
-                //             'numbers' => $data['result'],
-                //             'created_at' => Carbon::now('America/Sao_Paulo'),
-                //             'updated_at' => Carbon::now('America/Sao_Paulo')
-                //         ]);
-                //     }
-                // }
+                foreach ($concurses as $concurse) {
+                    $has_draw = DB::connection($data_partner['connection'])->table('draws')->where('type_game_id', $concurse->type_game_id)->where('competition_id', $concurse->id)->exists();
+                    if(!$has_draw) {
+                        $concurses_id[] = $concurse->id;
+                        $draws_id[] = DB::connection($data_partner['connection'])->table('draws')->insertGetId([
+                            'type_game_id' => $concurse->type_game_id,
+                            'competition_id' => $concurse->id,
+                            'numbers' => $data['result'],
+                            'created_at' => Carbon::now('America/Sao_Paulo'),
+                            'updated_at' => Carbon::now('America/Sao_Paulo')
+                        ]);
+                    }
+                }
 
                 $winners_users_ids = [];
                 foreach ($draws_id as $draw) {
