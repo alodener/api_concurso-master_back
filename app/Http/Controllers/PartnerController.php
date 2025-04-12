@@ -2388,13 +2388,11 @@ class PartnerController extends Controller
                     'games.client_id'
                 ])
                 ->whereIn('games.id', $gamesIds)
-                // ->where('games.status', 1)
+                ->where('games.status', 1)
                 ->where('games.random_game', '=', '0')
                 ->groupBy('games.id', 'games.client_id')
                 // ->having('total_premio', '<=', $valorMaximo)
                 ->get();
-
-            dd($gamesToAutoAprove);
 
             if ($gamesToAutoAprove) {
                 $groupedByClientId = [];
