@@ -516,28 +516,28 @@ class PartnerController extends Controller
                 return response()->json(['error' => 'Category is missing'], 400);
             }
             foreach ($data['partners'] as $partner) {
+
                 $winners = null;
                 $draw_data = null;
                 $concurses_id = null;
-                $draws_id = [];
+                $draws_id = [3725];
                 $data_partner = Partner::findOrFail($partner);
                 $_SESSION['partner_send_result'] = $data_partner;
                 $categorys = DB::connection($data_partner['connection'])->table('type_games')->where('category', $data['category'])->pluck('id');
                 $concurses = DB::connection($data_partner['connection'])->table('competitions')->where('number', $data['number'])->whereIn('type_game_id', $categorys)->get();
-                foreach ($concurses as $concurse) {
-                    $has_draw = DB::connection($data_partner['connection'])->table('draws')->where('type_game_id', $concurse->type_game_id)->where('competition_id', $concurse->id)->exists();
-                    if(!$has_draw) {
-                        $concurses_id[] = $concurse->id;
-                        $draws_id[] = DB::connection($data_partner['connection'])->table('draws')->insertGetId([
-                            'type_game_id' => $concurse->type_game_id,
-                            'competition_id' => $concurse->id,
-                            'numbers' => $data['result'],
-                            'created_at' => Carbon::now('America/Sao_Paulo'),
-                            'updated_at' => Carbon::now('America/Sao_Paulo')
-                        ]);
-                    }
-                }
-
+                // foreach ($concurses as $concurse) {
+                //     $has_draw = DB::connection($data_partner['connection'])->table('draws')->where('type_game_id', $concurse->type_game_id)->where('competition_id', $concurse->id)->exists();
+                //     if(!$has_draw) {
+                //         $concurses_id[] = $concurse->id;
+                //         $draws_id[] = DB::connection($data_partner['connection'])->table('draws')->insertGetId([
+                //             'type_game_id' => $concurse->type_game_id,
+                //             'competition_id' => $concurse->id,
+                //             'numbers' => $data['result'],
+                //             'created_at' => Carbon::now('America/Sao_Paulo'),
+                //             'updated_at' => Carbon::now('America/Sao_Paulo')
+                //         ]);
+                //     }
+                // }
 
                 $winners_users_ids = [];
                 foreach ($draws_id as $draw) {
@@ -555,9 +555,8 @@ class PartnerController extends Controller
                         $winners_string = strval(implode(",", $winners));
                         DB::connection($data_partner['connection'])->table('draws')->where('id',$draw)->update(['games' => $winners_string]);
                     }
-
-
                 }
+
                 $partner_id = $data_partner['id'];
 
                 $data2 = [
@@ -1709,8 +1708,8 @@ class PartnerController extends Controller
                     $id_banca = $result['id_banca'] ?? null;
 
                     $existe = !empty(array_filter($allGameNames, function ($game) use ($banca, $categoria) {
-                        return $game['categoria'] === $categoria;
-                        // return $game['banca'] === $banca && $game['categoria'] === $categoria;
+                        // return $game['categoria'] === $categoria;
+                        return $game['banca'] === $banca && $game['categoria'] === $categoria;
                     }));
 
                     if (!$existe) {
@@ -2335,6 +2334,7 @@ class PartnerController extends Controller
     public function autoAprovePrizeToPartner($partner_id, $data = null) {
         date_default_timezone_set('America/Sao_Paulo');
         $data_auto_aprovacao = date('Y-m-d');
+        $data_auto_aprovacao = date('2025-04-02');
 
         // Busca informações do parceiro
         $data_partner = Partner::findOrFail($partner_id);
@@ -2388,12 +2388,13 @@ class PartnerController extends Controller
                     'games.client_id'
                 ])
                 ->whereIn('games.id', $gamesIds)
-                ->where('games.status', 1)
+                // ->where('games.status', 1)
                 ->where('games.random_game', '=', '0')
-                ->groupBy('games.id')
+                ->groupBy('games.id', 'games.client_id')
                 // ->having('total_premio', '<=', $valorMaximo)
                 ->get();
 
+            dd($gamesToAutoAprove);
 
             if ($gamesToAutoAprove) {
                 $groupedByClientId = [];
