@@ -1149,8 +1149,6 @@ class PartnerController extends Controller
 
             $ids = array_filter(explode(',', preg_replace('/[^0-9,]/', '', $data['partner'])), 'strlen');
 
-            // $ids = [2,3];
-
             $partner = Partner::whereIn('id', $ids)->get();
 
             foreach ($partner as $key => $data_partner) {
@@ -2386,7 +2384,6 @@ class PartnerController extends Controller
     public function autoAprovePrizeToPartner($partner_id, $data = null) {
         date_default_timezone_set('America/Sao_Paulo');
         $data_auto_aprovacao = date('Y-m-d');
-        $data_auto_aprovacao = date('2025-04-02');
 
         // Busca informações do parceiro
         $data_partner = Partner::findOrFail($partner_id);
