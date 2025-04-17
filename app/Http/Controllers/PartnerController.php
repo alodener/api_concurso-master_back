@@ -529,7 +529,35 @@ class PartnerController extends Controller
                         }
                     }
                 }
-                if($data['category'] != 'dupla_sena' && $data['category'] != 'mega_kino' ) {
+                if($data['category'] == 'triplo_6') {
+                    foreach ($type_games as $type_game) {
+                        $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
+                        if(!$has_competition) {
+                             $letras = ['A', 'B'];
+                             $comps= [];
+                            foreach ($letras as $letra) {
+                                 $compId = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
+                                    'number' => $data['number'] . $letra,
+                                    'type_game_id' => $type_game->id,
+                                    'sort_date' => $data['date_of_sort'],
+                                    'created_at' => Carbon::now('America/Sao_Paulo'),
+                                    'updated_at' => Carbon::now('America/Sao_Paulo')
+                                ]);
+                                array_push($comps, $compId);
+                            }
+                            $compIdb = DB::connection($data_partner['connection'])->table('competitions')->insertGetId([
+                                'number' => $data['number'],
+                                'type_game_id' => $type_game->id,
+                                'sort_date' => $data['date_of_sort'],
+                                'created_at' => Carbon::now('America/Sao_Paulo'),
+                                'updated_at' => Carbon::now('America/Sao_Paulo')
+                            ]);
+                            array_push($comps, $compIdb);
+                             $this->addTeimosinha($data_partner, $type_game, 2, $comps);
+                        }
+                    }
+                }
+                if($data['category'] != 'dupla_sena' && $data['category'] != 'mega_kino' && $data['category'] != 'triplo_6') {
                     foreach ($type_games as $type_game) {
                         $has_competition = DB::connection($data_partner['connection'])->table('competitions')->where('type_game_id', $type_game->id)->where('number', $data['number'])->exists();
                         if(!$has_competition) {
