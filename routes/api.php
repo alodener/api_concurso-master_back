@@ -5,6 +5,7 @@ use App\Http\Controllers\LogController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ApostasFeitasController;
+use App\Http\Controllers\LiveStreamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +78,8 @@ Route::get('/auto-aprovation/corrigir-saldos', [PartnerController::class, 'corri
 
 Route::post('/apostas-feitas', [ApostasFeitasController::class, 'store']);
 Route::get('/percentes/{numberOfWinners}', [PartnerController::class, 'generatePercentages']);
+
+Route::get('/channel-id-live', [LiveStreamController::class, 'channelIdLive']); // PEGA LIVE STREAM
 
 Route::get('/winners-list', [PartnerController::class, 'getWinnersListByBancaAndDate']); // Traz a lista dos objetos!! Já tenho a função
 Route::get('/winners-list2', [PartnerController::class, 'getWinnersListByBancaAndHours']); // Traz a lista dos objetos!! Já tenho a função
